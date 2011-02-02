@@ -1,0 +1,22 @@
+
+
+UserLanguage
+The language that a user would be allowed to write. It's important to 
+specify this, because we know that users aren't actually allowed to specify
+modal variables under substitutions; lowering can be made simpler by
+relying on this.
+
+ExternalLanguage
+The full language of the non-normal forms of contextual modal type theory; the 
+external language would really be best defined by translation into this 
+language.
+
+RaisedLanguage
+This is the canonical forms version of CMTT where all modal vars are defined
+in an empty context.
+
+LoweredLanguage 
+This is the canonical forms version of CMTT where all modal vars are defined
+
+
+  ---  CMTT

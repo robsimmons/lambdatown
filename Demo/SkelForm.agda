@@ -204,7 +204,6 @@ module TEST where
    sig _ = Nothing
 
    open EXTERNAL sig public
-   open RAISED sig public using (canonize)
 
    combI : Term [] [] (con "exp")
    combI = con "lam" · Λ (var Z)

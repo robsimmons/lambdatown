@@ -49,5 +49,12 @@ module LIST where
    map f [] = []
    map f (x :: xs) = f x :: map f xs
 
+   inmap : ∀{a} {A B : Set a} {a : A} {as : List A} 
+      → (P : A → B)
+      → a ∈ as 
+      → P a ∈ map P as
+   inmap P Z = Z
+   inmap P (S n) = S (inmap P n)
+
 open LIST public
   using (List ; [] ; [_] ; _::_ ; _++_ ; _∈_ ; Z ; S)
