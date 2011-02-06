@@ -8,14 +8,15 @@ module Types where
 infixr 5 _⊃_
 infixr 4 _∧_
 data Type : Set where
-   con : String → Type
-   _⊃_ : Type → Type → Type
-   _∧_ : Type → Type → Type
+   con : (Q : String) → Type
+   _⊃_ : (A B : Type) → Type
+   _∧_ : (A B : Type) → Type
 
 Ctx = List Type
-MCtx = List (Ctx × Type)
+MCtx = List (Ctx × Type)   -- Modal context
+LCtx = List (Ctx × String) -- Lowered modal context
 
-open LIST.SET
+open LIST.SET public
 _⊆_ : Ctx → Ctx → Set
 _⊆_ = Sub
 
