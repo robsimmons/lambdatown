@@ -207,6 +207,20 @@ module LoweredLanguage (sig : Sig) where
    skelrev (π₂ sk) = {!!}
 -}
 
+
+   -- Thi
+   seek : ∀{Γ Δ A B C}
+      → Term [] Γ B
+      → A ∈ Γ
+      → Skel Δ A C
+      → List (∃ λ Ψ → Skel Ψ B C × Subst [] Ψ Δ)
+   seek (mvar () σ) x' sk
+   seek (x · sk [ σ ]) x' sk' = {!!}
+   seek (Λ n) x sk = LIST.map {!!} (seek n (S x) sk)
+    where 
+      Λ' : 
+   seek ⟨ n₁ , n₂ ⟩ x sk = {!!}
+
    hred⁻¹ : ∀{Γ ΓP C A} 
       → Term [] Γ C
       → A ∈ Γ
