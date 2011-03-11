@@ -158,125 +158,47 @@ module LoweredLanguage (sig : Sig) where
    pull ⟨ n₁ , n₂ ⟩ (π₂ sk) = pull n₂ sk
 
    mutual
-      _○_ : ∀{Δ Γ₁ Γ₂ Γ₃} → Subst Δ Γ₂ Γ₃ → Subst Δ Γ₁ Γ₂ → Subst Δ Γ₁ Γ₃
-      [] ○ τ = []
-      (n , σ) ○ τ = (n ⟦ τ ⟧) , (σ ○ τ)
+      _○_ : ∀{Δ Γ₁ Γ₂ Γ₃} → Subst Δ Γ₁ Γ₂ → Subst Δ Γ₂ Γ₃ → Subst Δ Γ₁ Γ₃
+      σ ○ [] = []
+      σ ○ (n , τ) = (n ⟦ σ ⟧) , (σ ○ τ)
 
       _⟦_⟧ : ∀{Δ Γ Γ' A}
          → Term Δ Γ' A
          → Subst Δ Γ Γ'
          → Term Δ Γ A
-      mvar u σ ⟦ σ' ⟧ = mvar u (σ ○ σ')
-      var x · sk [ σ ] ⟦ σ' ⟧ = {!!} -- hred (lookup x σ') sk (σ ○ σ')
+      mvar u σ ⟦ σ' ⟧ = mvar u (σ' ○ σ)
+      var x · sk [ σ ] ⟦ σ' ⟧ = hred (lookup x σ') sk (σ' ○ σ)
        where
          pulled-term = pull (lookup x σ') sk
          n = fst pulled-term
          τ = snd pulled-term
-      con c · sk [ σ ] ⟦ σ' ⟧ = con c · sk [ σ ○ σ' ]
+      con c · sk [ σ ] ⟦ σ' ⟧ = con c · sk [ σ' ○ σ ]
       Λ n ⟦ σ ⟧ = Λ (n ⟦ η Z , wkS sub-wken σ ⟧)
       ⟨ n₁ , n₂ ⟩ ⟦ σ ⟧ = ⟨ n₁ ⟦ σ ⟧ , n₂ ⟦ σ ⟧ ⟩ 
 
-{-
-   unpull : ∀{Δ Γ ΓP A C}
-      → Term Δ Γ A
-      → Skel ΓP A C
-      → Term Δ (ΓP ++ Γ) C × Subst Δ (ΓP ++ Γ) ΓP
--}
-
-   -- ·'⁻¹ : ∀{Γ A B C} → Skel Γ A C → Skel (Γ ++ [ B ]) A C 
-   data Skel⁻¹ : Ctx → Type → Type → Set where
-      ⟨⟩ : ∀{A} → Skel⁻¹ [] A A
-      ·_ : ∀{A B Γ C}
-         (sk : Skel⁻¹ Γ A C)
-         → Skel⁻¹ (Γ ++ [ B ]) A (B ⊃ C)
-      π₁ : ∀{A B Γ C}
-         (sk : Skel⁻¹ Γ A B)
-         → Skel⁻¹ Γ A (B ∧ C)
-      π₂ : ∀{A B Γ C}
-         (sk : Skel⁻¹ Γ A C)
-         → Skel⁻¹ Γ A (B ∧ C)
-
-{-
-   rev : Ctx → Ctx → Ctx
-
-   -- skelrev : ∀{ΓP Γ
-   skelrev : ∀{ΓP A C} → Skel ΓP A C → Skel⁻¹ ΓP C D → Skel⁻¹ ΓP
-   skelrev ⟨⟩ = ⟨⟩
-   skelrev (· sk) = {!!}
-   skelrev (π₁ sk) = {!!}
-   skelrev (π₂ sk) = {!!}
--}
-
-
-   -- Thi
+   -- This will just be annoying, since involves strengthening
    seek : ∀{Γ Δ A B C}
       → Term [] Γ B
       → A ∈ Γ
       → Skel Δ A C
       → List (∃ λ Ψ → Skel Ψ B C × Subst [] Ψ Δ)
-   seek (mvar () σ) x' sk
-   seek (x · sk [ σ ]) x' sk' = {!!}
-   seek (Λ n) x sk = LIST.map {!!} (seek n (S x) sk)
-    where 
-      Λ' : 
-   seek ⟨ n₁ , n₂ ⟩ x sk = {!!}
-
-   hred⁻¹ : ∀{Γ ΓP C A} 
-      → Term [] Γ C
-      → A ∈ Γ
-      → Skel ΓP A C
-      → List (Subst [] Γ ΓP)
-   hred⁻¹ n x ⟨⟩ = [] 
-   hred⁻¹ n x (π₁ ⟨⟩) = {!sk!} 
-   hred⁻¹ n x (π₂ ⟨⟩) = {!sk!} 
-   hred⁻¹ n x sk = {!sk!} 
-   -- sk = sk' [ π₁ ⟨⟩ ]
-{-
-   hred⁻¹ (mvar () σ) x' sk
-   hred⁻¹ (x · sk [ σ ]) x' sk' = {!!}
-   hred⁻¹ (Λ n) x sk = {! Λ n!}
-   hred⁻¹ ⟨ n₁ , n₂ ⟩ x sk = {!!}
--}
-
-
-{-
-      → List (∃ λ ΓP → ∃ λ A → (A ∈ Γ) × Skel ΓP A C × Subst [] Γ ΓP)
-   hred⁻¹ (mvar () σ) 
-   hred⁻¹ (con c · sk [ σ ]) = [] 
-   hred⁻¹ (var x · sk [ σ ]) = [ , , (x , (sk , σ)) ]
-   hred⁻¹ (Λ n) = LIST.concat {!!} (hred⁻¹ n)
-    where
-      Λ' : ∀{Γ B C ΓP}
-         → (A : Type) 
-         → ((A ∈ B :: Γ) × Skel ΓP A C × Subst [] (B :: Γ) ΓP)
-         → List (∃ λ ΓP → ∃ λ A → (A ∈ Γ) × Skel ΓP A (B ⊃ C) × Subst [] Γ ΓP)
-      -- This is one of the cases where we lose "non-pattern" substitutions.
-      -- It would arise from trying to invert a substitution of the form
-      -- f y [ (λx.x)/f, x/y ] = x 
-      Λ' A (Z , (sk , σ)) = []
-
-      -- 
-      Λ' (con Q) (S x , (sk , σ)) = [ , (, x , ({!sk!} , {!!})) ]
-      Λ' (A ⊃ B') (S x , (sk , σ)) = {!!}
-      Λ' (A ∧ B') (S x , (sk , σ)) = {!!} -- [ (, (, ({!!} , ({!sk!} , {!!})))) ]
-   hred⁻¹ ⟨ n₁ , n₂ ⟩ = LIST.cross {!!} (hred⁻¹ n₁) (hred⁻¹ n₂)
--}
+   seek n x sk = {!!}
 
    mutual 
       _○⁻¹_ : ∀{Γ₁ Γ₂ Γ₃} 
-         → Subst [] Γ₁ Γ₃ 
          → Subst [] Γ₁ Γ₂ 
+         → Subst [] Γ₁ Γ₃ 
          → List (Subst [] Γ₂ Γ₃)
-      [] ○⁻¹ τ = [ [] ]
-      (n , σ) ○⁻¹ τ = LIST.cross _,_ (n ⟦ τ ⟧⁻¹) (σ ○⁻¹ τ)
+      σ ○⁻¹ [] = [ [] ]
+      σ ○⁻¹ (n , τ) = LIST.cross _,_ (n ⟦ σ ⟧⁻¹) (σ ○⁻¹ τ)
 
       _⟦_⟧⁻¹ : ∀{Γ Γ' A}
          → Term [] Γ A
          → Subst [] Γ Γ'
          → List (Term [] Γ' A)
       mvar () σ ⟦ σ' ⟧⁻¹
-      var n · sk [ σ ] ⟦ σ' ⟧⁻¹ = {!!}
-      con c · sk [ σ ] ⟦ σ' ⟧⁻¹ = LIST.map (_·_[_] (con c) sk) (σ ○⁻¹ σ')
+      var n · sk [ σ ] ⟦ σ' ⟧⁻¹ = {!LIST.map ? ?!}
+      con c · sk [ σ ] ⟦ σ' ⟧⁻¹ = LIST.map (_·_[_] (con c) sk) (σ' ○⁻¹ σ)
       Λ n ⟦ σ ⟧⁻¹ = LIST.map Λ (n ⟦ η Z , wkS sub-wken σ ⟧⁻¹)
       ⟨ n₁ , n₂ ⟩ ⟦ σ ⟧⁻¹ = LIST.cross ⟨_,_⟩ (n₁ ⟦ σ ⟧⁻¹) (n₂ ⟦ σ ⟧⁻¹)
 
