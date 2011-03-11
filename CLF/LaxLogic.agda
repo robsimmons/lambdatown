@@ -18,32 +18,27 @@ data Type : Polarity → Set where
 
 {- Contexts and inclusion in contexts -}
 
-data Ctx : Set where
-   ε : Ctx
-   _true⁺ : (Q : String) → Ctx
-   _true⁻ : (A : Type ⁻) → Ctx
-   _,_ : Ctx → Ctx → Ctx
+data Jmt : Set where 
+   _true⁺ : String → Jmt
+   _true⁻ : Type ⁻ → Jmt
 
-data _∈⁺_ (Q : String) : Ctx → Set where
-   ⟨⟩ : Q ∈⁺ Q true⁺
-   l : ∀{Γ₁ Γ₂} (x : Q ∈⁺ Γ₁) → Q ∈⁺ (Γ₁ , Γ₂)
-   r : ∀{Γ₁ Γ₂} (x : Q ∈⁺ Γ₂) → Q ∈⁺ (Γ₁ , Γ₂)
+Ctx = List Jmt
 
-data _∈⁻_ (A : Type ⁻) : Ctx → Set where
-   ⟨⟩ : A ∈⁻ A true⁻
-   l : ∀{Γ₁ Γ₂} (x : A ∈⁻ Γ₁) → A ∈⁻ (Γ₁ , Γ₂)
-   r : ∀{Γ₁ Γ₂} (x : A ∈⁻ Γ₂) → A ∈⁻ (Γ₁ , Γ₂)
-
+open LIST.SET public
 _⊆_ : Ctx → Ctx → Set
-Δ ⊆ Γ = (∀{Q} → Q ∈⁺ Δ → Q ∈⁺ Γ) × (∀{A} → A ∈⁻ Δ → A ∈⁻ Γ)
+_⊆_ = Sub
 
 {- Skeletons -}
 
--- This definition only works because skeletons aren't 
-Pat⁺ : Type ⁺ → Ctx
-Pat⁺ (con Q .⁺) = Q true⁺
-Pat⁺ (A ∧ B) = Pat⁺ A , Pat⁺ B
-Pat⁺ (↓ A) = A true⁻
+-- This definition only works because skeletons are determinstic
+Pat⁺ : Type ⁺ → Ctx → Ctx
+Pat⁺ (con Q .⁺) Δ = Q true⁺ :: Δ
+Pat⁺ (A ∧ B) Δ = Pat⁺ A (Pat⁺ B Δ)
+Pat⁺ (↓ A) Δ = A true⁻ :: Δ
+
+{- (con Q .⁺) = [ Q true⁺ ]
+Pat⁺ (A ∧ B) = Pat⁺ A ++ Pat⁺ B
+Pat⁺ (↓ A) = [ A true⁻ ] -}
 
 {-
 data Skel⁺ : Ctx → Type ⁺ → Set where
@@ -56,22 +51,22 @@ data Skel⁺ : Ctx → Type ⁺ → Set where
 -}
 
 data Skel⁻ : Ctx → Type ⁻ → Type ⁻ → Set where
-   ⟨⟩ : ∀{A} → Skel⁻ ε A A
-   _·_ : ∀{Δ₂ A B C}
-      (sk₂ : Skel⁻ Δ₂ B C)
-      → Skel⁻ (Pat⁺ A , Δ₂) (A ⊃ B) C
+   ⟨⟩ : ∀{A} → Skel⁻ [] A A
+   ·_ : ∀{Δ₂ A B C}
+      (K : Skel⁻ Δ₂ B C)
+      → Skel⁻ (Pat⁺ A Δ₂) (A ⊃ B) C
    π₁ : ∀{Δ A B C}
-      (sk : Skel⁻ Δ A C)
+      (K : Skel⁻ Δ A C)
       → Skel⁻ Δ (A ∧ B) C
    π₂ : ∀{Δ A B C}
-      (sk : Skel⁻ Δ B C)
+      (K : Skel⁻ Δ B C)
       → Skel⁻ Δ (A ∧ B) C
    
 {- Definition of logic -}
 
 module LAX (sig : String → Maybe (Type ⁻)) where
    data Head (Γ : Ctx) : Type ⁻ → Set where
-      var : ∀{A} (x : A ∈⁻ Γ)
+      var : ∀{A} (x : A true⁻ ∈ Γ)
          → Head Γ A
       con : (c : String) {ch : Check (isSome (sig c))}
          → Head Γ (valOf (sig c) {ch})
@@ -79,26 +74,28 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    infixr 21 _·_[_]
    mutual
       data Subst (Γ : Ctx) : Ctx → Set where
-         ε : Subst Γ ε
-         ⟨_⟩⁺ : ∀{Q} (x : Q ∈⁺ Γ) → Subst Γ (Q true⁺)
-         ⟨_⟩⁻ : ∀{A} (N : Term Γ A) → Subst Γ (A true⁻)
-         _,_ : ∀{Δ₁ Δ₂}
-            (σ₁ : Subst Γ Δ₁) 
-            (σ₂ : Subst Γ Δ₂) 
-            → Subst Γ (Δ₁ , Δ₂) 
+         [] : Subst Γ []
+         _,⁺_ : ∀{Q Δ} 
+            (x : Q true⁺ ∈ Γ) 
+            (σ : Subst Γ Δ)
+            → Subst Γ (Q true⁺ :: Δ)
+         _,⁻_ : ∀{A Δ} 
+            (N : Term Γ A)
+            (σ : Subst Γ Δ)
+            → Subst Γ (A true⁻ :: Δ)
          
       -- N : Term Γ A is the derivation Γ ⊢ N : A true
       data Term (Γ : Ctx) : Type ⁻ → Set where
          _·_[_] : ∀{A Q Δ}
             (h : Head Γ A)
-            (K : Skel⁻ Γ A (con Q ⁻))
+            (K : Skel⁻ Δ A (con Q ⁻))
             (σ : Subst Γ Δ)
             → Term Γ (con Q ⁻)
          ○ : ∀{A}
             (E : Exp Γ A)
             → Term Γ (○ A)
          Λ : ∀{A B}
-            (N : Term (Γ , Pat⁺ A) B)
+            (N : Term (Pat⁺ A Γ) B)
             → Term Γ (A ⊃ B)
          _,_ : ∀{A B}
             (N₁ : Term Γ A)
@@ -108,25 +105,53 @@ module LAX (sig : String → Maybe (Type ⁻)) where
       -- E : Exp Γ A is the derivation Γ ⊢ E ÷ A lax
       data Exp (Γ : Ctx) : Type ⁺ → Set where
          ⟨_⟩ : ∀{A}
-            (σ : Subst Γ (Pat⁺ A))
-            → Exp Γ A
+            (σ : Subst Γ (Pat⁺ A []))
+            → Exp Γ A 
          let○ : ∀{Δ A B C} 
             (h : Head Γ A)
             (K : Skel⁻ Δ A (○ B))
             (σ : Subst Γ Δ)
-            (E : Exp (Γ , Pat⁺ B) C)
-            → Exp Γ C
+            (E : Exp (Pat⁺ B Γ) C)
+            → Exp Γ C 
  
    -- SUBSTITUTION
    mutual
-      subst : ∀{Γ A C} → Term Γ A → Term (Γ , A true⁻) C → Term Γ C
-      subst M (h · K [ σ ]) = {!!}
-      subst M (○ E) = {!!}
-      subst M (Λ N) = {!!}
-      subst M ( N₁ , N₂ ) = {!!}
+      subst⁻ : ∀{Γ A C} → Term Γ A → Term (A true⁻ :: Γ) C → Term Γ C
+      subst⁻ M (var Z · K [ σ ]) = {!!}
+      subst⁻ M (var (S x) · K [ σ ]) = var x · K [ substσ M σ ]
+      subst⁻ M (con c · K [ σ ]) = con c · K [ substσ M σ ]
+      subst⁻ M (○ E) = {!!}
+      subst⁻ M (Λ N) = {!!}
+      subst⁻ M ( N₁ , N₂ ) = {!!}
 
-      substσ : ∀{Γ Δ C} → Subst Γ Δ → Term (Γ , Δ) C → Term Γ C
-      substσ ε N = {! -- weaken --!}
+      subst⁺ : ∀{Γ A C} → Term Γ A
+
+      substσ : ∀{Γ Δ A} → Term Γ A → Subst (A true⁻ :: Γ) Δ → Subst Γ Δ
+      substσ M [] = []
+      substσ M (S x ,⁺ σ') = x ,⁺ substσ M σ'
+      substσ M (N ,⁻ σ') = subst⁻ M N ,⁻ substσ M σ'
+
+      hred : ∀{Γ Δ A C}
+         → Term Γ A 
+         → Skel⁻ Δ A C
+         → Subst Γ Δ
+         → Term Γ C
+      hred M ⟨⟩ σ = M
+      hred (Λ M) (· K) σ = {!!} -- hred {!!} K {!σ!}
+      hred (M₁ , M₂) (π₁ K) σ = hred M₁ K σ
+      hred (M₁ , M₂) (π₂ K) σ = hred M₂ K σ
+
+      hred⁺ : ∀{Γ Δ B C}
+         → (A : Type ⁺)
+         → Term (Pat⁺ A Γ) B
+         → Skel⁻ Δ B C
+         → Subst Γ (Pat⁺ A Δ)
+         → Term Γ C
+      hred⁺ (con Q .⁺) M K σ = {!!}
+      hred⁺ (A ∧ B) M K σ = {!hred⁺ A M K!}
+      hred⁺ (↓ A) M K σ = {!!}
+
+{- ε N = {! -- weaken --!}
       substσ ⟨ x ⟩⁺ N = {! !}
-      substσ ⟨ M ⟩⁻ N = subst {!M!} {!!}
-      substσ (σ₁ , σ₂) N = {!!}
+      substσ ⟨ M ⟩⁻ N = subst M N
+      substσ (σ₁ , σ₂) N = {!substσ σ₁ N!} -}
