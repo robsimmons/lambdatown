@@ -1,6 +1,6 @@
 open import Prelude 
 
-module CLF.LaxLogicNameless where
+module CLF.LaxPlusNameless where
 
 infixr 5 _⊃_
 
@@ -139,7 +139,6 @@ module LAX (sig : String → Maybe (Type ⁻)) where
             (σ : Subst' Γ s Δ)
             → Subst' Γ (Nothing :: s) (Q true⁺ :: Δ)
 
-
       -- N : Term Γ A is the derivation Γ ⊢ N : A true
       data Term' (Γ : Ctx) : trm → Type ⁻ → Set where
          _·_[_] : ∀{A Q Δ s}
@@ -152,7 +151,7 @@ module LAX (sig : String → Maybe (Type ⁻)) where
             → Term' Γ (○ e) (○ A)
          Λ : ∀{A B n}
             (N : Term' (Hyp A :: Γ) n B)
-            → Term' Γ n (A ⊃ B)
+            → Term' Γ (Λ n) (A ⊃ B)
          _,_ : ∀{A B n₁ n₂}
             (N₁ : Term' Γ n₁ A)
             (N₂ : Term' Γ n₂ B)
@@ -293,13 +292,12 @@ module LAX (sig : String → Maybe (Type ⁻)) where
          leftist {A = con Q} ⟨ ⁺ x ⟩ E' = wkE (sub-cntr x) E'
          leftist {A = ↓ A} ⟨ ⁻ M ⟩ E' = substE M (→mE E')
          leftist (let○ h K σ E) E' = let○ h K σ (leftist E (wkE sub-wkex E'))
-   
       substE M (let○ (var (S x)) K σ E) = 
          let○ (var x) K (substσ M σ) (substE (wk sub-wken M) (wkE' sub-exch E))
       substE M (let○ (con c) K σ E) = 
          let○ (con c) K (substσ M σ) (substE (wk sub-wken M) (wkE' sub-exch E))
 
-
+      -- Type A gets smaller
       hred : ∀{Γ Δ A C}
          → Term Γ A 
          → Skel Δ A C
