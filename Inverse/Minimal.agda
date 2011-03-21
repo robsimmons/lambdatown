@@ -231,6 +231,8 @@ module MINIMAL (sig : String → Maybe Class) where
    η : ∀{Γ A} → Term (A :: Γ) A
    η = eta _ (var Z) ⟨⟩ ⟨⟩
 
+   η' : ∀{Γ A} → A ∈ Γ → Term Γ A
+   η' x = eta _ (var x) ⟨⟩ ⟨⟩ 
 
    {- PART 6: APPLYING AND COMPOSING SUBSTITUTIONS -} 
 

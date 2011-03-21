@@ -45,11 +45,20 @@ module TYPES (sig : String → Maybe Class) where
           → PCtx γ (a :: δ)
 
    -- XXX add to stdlib
-   revappend : Ctx → Ctx → Ctx  
-   revappend [] γ = γ
-   revappend (a :: δ) γ = revappend δ (a :: γ)
+   _⟩⟨⟩_ : Ctx → Ctx → Ctx  
+   [] ⟩⟨⟩ γ = γ
+   (a :: δ) ⟩⟨⟩ γ = δ ⟩⟨⟩ (a :: γ)
 
-   _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (revappend δ γ)
+   sub-⟩⟨⟩ : ∀{δ γ} → γ ⊆ (δ ⟩⟨⟩ γ)
+   sub-⟩⟨⟩ x = {!!}
+
+   sub-exch-ra : ∀{δ a γ} → (δ ⟩⟨⟩ (a :: γ)) ⊆ (a :: δ ⟩⟨⟩ γ)
+   sub-exch-ra x = {!!}
+
+   sub-ra-exch : ∀{δ a γ} → (a :: δ ⟩⟨⟩ γ) ⊆ (δ ⟩⟨⟩ (a :: γ))
+   sub-ra-exch x = {!!}
+
+   _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟨⟩ γ)
    Γ // ⟨⟩ = Γ
    Γ // (A , Δ) = (Γ , A) // Δ
 
@@ -79,7 +88,14 @@ module TYPES (sig : String → Maybe Class) where
 
    substΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
    substΔ N ⟨⟩ = ⟨⟩
-   substΔ N (A , Δ) = substA N A , wkΔ {! sub-exch!} {!!}
+   substΔ N (A , Δ) = substA N A , substΔ (wk sub-wken N) (wkΔ sub-exch Δ)
+
+   subA : ∀{δ γ a} → Type (δ ⟩⟨⟩ γ) a → Subst γ δ → Type γ a
+   subA (c · K [ σ' ]) σ  = {!!}
+   subA {δ} (Π A B) σ = 
+      Π (subA A σ) (subA (wkA (sub-ra-exch {δ}) B) (wkσ sub-wken σ))
+   subA {δ} (Σ A B) σ = 
+      Σ (subA A σ) (subA (wkA (sub-ra-exch {δ}) B) (wkσ sub-wken σ))
 
 module DEPENDENT 
   (sig : String → Maybe Class
@@ -89,18 +105,18 @@ module DEPENDENT
    open TYPES sig
 
    mutual 
-      data _⊢_∶_∶subst {γ : _} (Γ : DCtx γ) : ∀{δ}
+      data _⊢_∶_∶ctx {γ : _} (Γ : DCtx γ) : ∀{δ}
             → Subst γ δ
             → PCtx γ δ → Set where
-         ⟨⟩ : Γ ⊢ ⟨⟩ ∶ ⟨⟩ ∶subst
+         ⟨⟩ : Γ ⊢ ⟨⟩ ∶ ⟨⟩ ∶ctx
          _,_ : ∀{a δ}
             {N : Term γ a}
             {A : Type γ a}
             {σ : Subst γ δ}
             {Δ : PCtx (a :: γ) δ}
             → Γ ⊢ N ∶ A ∶type
-            → Γ ⊢ σ ∶ {!substΔ N Δ!} ∶subst
-            → Γ ⊢ N , σ ∶ A , Δ ∶subst
+            → Γ ⊢ σ ∶ substΔ N Δ ∶ctx
+            → Γ ⊢ N , σ ∶ A , Δ ∶ctx
 
       data _⊢_∶_∶type {γ : _} (Γ : DCtx γ) : ∀{a} 
             → Term γ a
@@ -110,9 +126,11 @@ module DEPENDENT
             {x : a ∈ γ}
             {K : Skel δ a (con (atm q))}
             {ch : Check (isSome (Sig c))}
+            {A : Type (a :: δ ⟩⟨⟩ γ) (con (atm q))}
             {σ : Subst γ δ}
-            → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > {!!}
-            → Γ ⊢ var x · K [ σ ] ∶ {!!} ∶type 
+            → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > A
+            → Γ ⊢ σ ∶ Δ ∶ctx
+            → Γ ⊢ var x · K [ σ ] ∶ subA (substA (η' (sub-⟩⟨⟩ {δ} x)) A) σ ∶type
          Λ : ∀{a b}
             {A : Type γ a}
             {B : Type (a :: γ) b}
@@ -133,7 +151,7 @@ module DEPENDENT
             → PCtx γ δ 
             → Skel δ a c 
             → Type γ a 
-            → Type (a :: (revappend δ γ)) c → Set where
+            → Type (a :: (δ ⟩⟨⟩ γ)) c → Set where
          ⟨⟩ : ∀{a} 
             {Γ : DCtx γ}
             {A : Type γ a} 
@@ -144,27 +162,27 @@ module DEPENDENT
             {Δ : PCtx (a :: γ) δ}
             {K : Skel δ b c}
             {B : Type (a :: γ) b}
-            {C : Type (a :: (revappend δ γ)) c}
-            → (Γ , A) / Δ ⊩ K ∶ B > {!C!}
-            → Γ / (A , Δ) ⊩ (· K) ∶ Π A B > {!!}
+            {C : Type (b :: δ ⟩⟨⟩ (a :: γ)) c}
+            → (Γ , A) / Δ ⊩ K ∶ B > C
+            → Γ / (A , Δ) ⊩ (· K) ∶ Π A B > {! ⊃L η C!}
          π₁ : ∀{a δ b c}
             {Γ : DCtx γ}
             {A : Type γ a}
             {Δ : PCtx γ δ}
             {K : Skel δ a c}
             {B : Type (a :: γ) b}
-            {C : Type γ c}
-            → Γ / Δ ⊩ K ∶ A > {!C!}
-            → Γ / Δ ⊩ (π₁ K) ∶ Σ A B > {!!}
+            {C : Type (a :: δ ⟩⟨⟩ γ) c}
+            → Γ / Δ ⊩ K ∶ A > C
+            → Γ / Δ ⊩ (π₁ K) ∶ Σ A B > {! ∧L₁ C!}
          π₂ : ∀{a δ b c}
             {Γ : DCtx γ}
             {A : Type γ a}
             {Δ : PCtx (a :: γ) δ}
             {K : Skel δ b c}
             {B : Type (a :: γ) b}
-            {C : Type γ c}
-            → (Γ , A) / Δ ⊩ K ∶ B > {!!} 
-            → Γ / {!Δ!} ⊩ (π₂ K) ∶ Σ A B > {!!}
+            {C : Type (b :: δ ⟩⟨⟩ (a :: γ)) c}
+            → (Γ , A) / Δ ⊩ K ∶ B > C 
+            → Γ / {! Δ!} ⊩ (π₂ K) ∶ Σ A B > {! ∧L C!} -- interesting, pos rule
 
 
       {- π₁ : ∀{a δ b c} 
