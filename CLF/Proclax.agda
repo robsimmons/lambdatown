@@ -81,7 +81,7 @@ module LAX (sig : String → Maybe Type) where
             (h : Head Γ₁ A)
             (K : Skel Δ A (○ B))
             (σ : Subst Γ₁ Δ)
-            (E : Exp (B :: Γ₁) Γ₂)
+            (E : Exp (B :: Γ₁) (B :: Γ₂))
             → Exp Γ₁ Γ₂
 
 
@@ -94,7 +94,7 @@ module LAX (sig : String → Maybe Type) where
 
    expθ : ∀{Γ₁ Γ₁' Γ₂} (θ : Γ₁ ⊆ Γ₁') (E : Exp Γ₁ Γ₂) → Γ₂ ⊆ (expΓ Γ₁' E)
    expθ θ ⟨⟩ = θ
-   expθ θ (h · K [ σ ], E) = expθ (sub-cons-congr θ) E
+   expθ θ (h · K [ σ ], E) = {!!} -- expθ (sub-cons-congr θ) E
 
    wkh : ∀{Γ Γ' A} → Γ ⊆ Γ' → Head Γ A → Head Γ' A
    wkh θ (con c) = con c
@@ -120,6 +120,10 @@ module LAX (sig : String → Maybe Type) where
       wkE θ (h · K [ σ ], E) =
          wkh θ h · K [ wkσ θ σ ], wkE (sub-cons-congr θ) E
 
+   wkexp : ∀{Γ₁ Γ₂ A} → Exp Γ₁ Γ₂ → Term Γ₁ A → Term Γ₂ A
+   wkexp ⟨⟩ N = N
+   wkexp (h · K [ σ ], E) N = wkexp E (wk sub-wken N)
+  
 
    {- PART 4: SUBSTITUTION -}
 
@@ -127,7 +131,8 @@ module LAX (sig : String → Maybe Type) where
       subst : ∀{Γ A C} → Term Γ A → Term (A :: Γ) C → Term Γ C
       subst M (Λ N) = Λ (subst (wk sub-wken M) (wk sub-exch N))
       subst M (N₁ , N₂) = subst M N₁ , subst M N₂
-      subst M (let○ E N) = {!!} -- ○ (substE M E)
+      subst M (let○ E N) = 
+         let○ (substE M E) {!N!} -- ○ (substE M E)
       subst M (con c · K [ σ ]) = con c · K [ substσ M σ ]
       subst M (var (S x) · K [ σ ]) = var x · K [ substσ M σ ]
       subst M (var Z · K [ σ ]) = red⁻ M K (substσ M σ)
@@ -142,8 +147,9 @@ module LAX (sig : String → Maybe Type) where
       substσ M ⟨⟩ = ⟨⟩
       substσ M (N , σ) = subst M N , substσ M σ
 
-      substE : ∀{Γ A C} → Term Γ A → Exp (A :: Γ) C → Exp Γ C
-      substE M E = {!!}
+      substE : ∀{Γ₁ A Γ₂} → Term Γ₁ A → Exp (A :: Γ₁) Γ₂ → Exp Γ₁ Γ₂
+      substE M ⟨⟩ = {!!}
+      substE M (h · K [ σ ], E) = {!!}
 {-
       substE M ⟨ N ⟩ = ⟨ subst M N ⟩
       substE M (let○ (con c) K σ E) = 

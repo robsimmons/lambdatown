@@ -1,0 +1,59 @@
+\documentclass{article}
+
+\begin{document}
+
+\title{A dependent skeleton calculus}
+\author{Salil Joshi \and Robert J. Simmons}
+\maketitle
+
+\section{Definition}
+
+Terms, skeletons, and substitutions are assumed to be implicitly 
+well-simply-typed and well-scoped. The upshot of this is essentially 
+that we know from the get-go that hereditary normalization $N[M/x]$ is total 
+by induction on the implicit type of the term $M$.
+
+\[
+\begin{array}{rrcl}
+\mbox{Terms} & M, N & ::= & 
+     x \cdot K [ \sigma ] 
+\mid c \cdot K [ \sigma ]
+\mid \lambda x. N
+\mid \langle N_1 , N_2 \rangle 
+\\
+\mbox{Substitutions} & \sigma & ::= &
+     \cdot 
+\mid N/x, \sigma
+\\
+\mbox{Skeletons} & K & ::= &
+     \cdot
+\mid x, K
+\mid \pi_1 K
+\mid \pi_2 K
+\medskip\\
+\mbox{Types} & A,B & ::= &
+     a \cdot K [ \sigma ]
+\mid \Pi x{:}A.B
+\mid \Sigma x{:}A.B
+\\
+\mbox{Kinds} & K & ::= &
+     \mathsf{type} \
+\mid \Pi x{:}A.K
+\medskip\\
+\mbox{Contexts} & \Gamma & ::= & 
+     \cdot
+\mid \Gamma, x : A
+\\
+\mbox{Partial Contexts} & \Delta & ::= &
+     \cdot
+\mid x : A, \Delta
+\\
+\mbox{Signatures} & \Sigma & ::= &
+     \cdot
+\mid \Sigma, a : K
+\mid \Sigma, c : A
+\\
+\end{array}
+\]
+
+\end{document}

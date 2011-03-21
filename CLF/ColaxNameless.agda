@@ -224,7 +224,7 @@ module COLAX (sig : String → Maybe Type) where
       subst : ∀{Γ A C n} → Term Γ A → Term' (A :: Γ) n C → Term Γ C
       subst M (Λ N) = Λ (subst (wk sub-wken M) (wk' sub-exch N))
       subst M (N₁ , N₂) = subst M N₁ , subst M N₂
-      subst M (○ E) = ○ {! (thunk (substE M (force E))) !}
+      subst M (○ E) = ○ {! thunk (substE M (force E)) !}
       subst M (con c · K [ σ ]) = con c · K [ substσ M σ ]
       subst M (var (S x) · K [ σ ]) = var x · K [ substσ M σ ]
       subst M (var Z · K [ σ ]) = red⁻ M K (substσ M σ)
@@ -243,7 +243,7 @@ module COLAX (sig : String → Maybe Type) where
       substE M ⟨ N ⟩ = ⟨ subst M N ⟩
       substE {e = let○ s e} M (let○ (con c) K σ E) = 
          let○ (con c) K (substσ M σ)
-          (thunk (substE {e = force e} (wk sub-wken M) (wkE' sub-exch (force E))))
+          (thunk (substE (wk sub-wken M) (wkE' sub-exch (force E))))
       substE M (let○ (var (S x)) K σ E) = 
          let○ (var x) K (substσ M σ)
           (thunk (substE (wk sub-wken M) (wkE' sub-exch (force E))))
