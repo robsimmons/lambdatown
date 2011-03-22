@@ -122,15 +122,16 @@ module DEPENDENT
             → Term γ a
             → Type γ a → Set where
          var : ∀{δ a c q}
-            {Δ : PCtx γ δ}
+            {Δ : PCtx (a :: γ) δ}
             {x : a ∈ γ}
             {K : Skel δ a (con (atm q))}
             {ch : Check (isSome (Sig c))}
-            {A : Type (a :: δ ⟩⟨⟩ γ) (con (atm q))}
+            {C : Type (δ ⟩⟨⟩ (a :: γ)) (con (atm q))}
             {σ : Subst γ δ}
-            → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > A
-            → Γ ⊢ σ ∶ Δ ∶ctx
-            → Γ ⊢ var x · K [ σ ] ∶ subA (substA (η' (sub-⟩⟨⟩ {δ} x)) A) σ ∶type
+            -- → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > A
+            → Γ / lookΓ Γ x / Δ ⊩ K ∶ C
+            → Γ ⊢ σ ∶ substΔ (η' x) Δ ∶ctx
+            → Γ ⊢ var x · K [ σ ] ∶ subA C (η' x , σ) ∶type
          Λ : ∀{a b}
             {A : Type γ a}
             {B : Type (a :: γ) b}
@@ -146,16 +147,64 @@ module DEPENDENT
             → Γ ⊢ N₂ ∶ substA N₁ B ∶type
             → Γ ⊢ N₁ , N₂ ∶ Σ A B ∶type
 
+      data _/_/_⊩_∶_ {γ : _} (Γ : DCtx γ) : ∀{δ a c}
+            → Type γ a
+            → PCtx (a :: γ) δ 
+            → Skel δ a c
+            → Type (δ ⟩⟨⟩ (a :: γ)) c → Set where 
+         ⟨⟩ : ∀{a} 
+            {A : Type γ a} 
+            → Γ / A / ⟨⟩ ⊩ ⟨⟩ ∶ wkA sub-wken A
+         ·_ : ∀{a δ b c} 
+            {A : Type γ a}
+            {Δ : PCtx (b :: a :: γ) δ}
+            {K : Skel δ b c}
+            {B : Type (a :: γ) b}
+            {C : Type (δ ⟩⟨⟩ (b :: a :: γ)) c}
+            → (Γ , A) / B / Δ ⊩ K ∶ C
+            → Γ / Π A B / wkA sub-wken A , {! ⊃LΔ Δ!} ⊩ (· K) ∶ {! ⊃LA C!}
+         π₁ : ∀{a δ b c}
+            {A : Type γ a}
+            {Δ : PCtx (a :: γ) δ}
+            {K : Skel δ a c}
+            {B : Type (a :: γ) b}
+            {C : Type (δ ⟩⟨⟩ (a :: γ)) c}
+            → Γ / A / Δ ⊩ K ∶ C
+            → Γ / Σ A B / {! ∧L₁Δ Δ!} ⊩ (π₁ K) ∶ {! ∧L₁A C!}
+         π₂ : ∀{a δ b c}
+            {A : Type γ a}
+            {Δ : PCtx (b :: a :: γ) δ}
+            {K : Skel δ b c}
+            {B : Type (a :: γ) b}
+            {C : Type (δ ⟩⟨⟩ (b :: a :: γ)) c}
+            → (Γ , A) / B / Δ ⊩ K ∶ C 
+            → Γ / Σ A B / {! ∧LΔ Δ!} ⊩ (π₂ K) ∶ {! ∧LA C!} 
+
+   mutual 
+      red-ok : ∀{γ a δ c}
+         {Γ : DCtx γ}
+         {N : Term γ a}
+         {A : Type γ a}
+         {Δ : PCtx (a :: γ) δ}
+         {K : Skel δ a c}
+         {C : Type (δ ⟩⟨⟩ (a :: γ)) c}
+         {σ : Subst γ δ}
+         → Γ ⊢ N ∶ A ∶type
+         → Γ / A / Δ ⊩ K ∶ C
+         → Γ ⊢ σ ∶ substΔ N Δ ∶ctx
+         → Γ ⊢ red N K σ ∶ subA C (N , σ) ∶type 
+      red-ok DM ⟨⟩ ⟨⟩ = {! !} -- weakening, substituting does nothing
+      red-ok (Λ DM) (· DK) (DN , Dσ) = {!!}
+      red-ok (DM₁ , DM₂) (π₁ DK) Dσ = red-ok DM₁ DK {!Dσ!}
+      red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {! -- DK --!} {!!} 
+
+{-
       data _/_⊩_∶_>_ {γ : _} : ∀{δ a c} 
             → DCtx γ 
             → PCtx γ δ 
             → Skel δ a c 
             → Type γ a 
             → Type (a :: (δ ⟩⟨⟩ γ)) c → Set where
-         ⟨⟩ : ∀{a} 
-            {Γ : DCtx γ}
-            {A : Type γ a} 
-            → Γ / ⟨⟩ ⊩ ⟨⟩ ∶ A > wkA sub-wken A
          ·_ : ∀{a δ b c} 
             {Γ : DCtx γ}
             {A : Type γ a}
@@ -183,14 +232,5 @@ module DEPENDENT
             {C : Type (b :: δ ⟩⟨⟩ (a :: γ)) c}
             → (Γ , A) / Δ ⊩ K ∶ B > C 
             → Γ / {! Δ!} ⊩ (π₂ K) ∶ Σ A B > {! ∧L C!} -- interesting, pos rule
+-}
 
-
-      {- π₁ : ∀{a δ b c} 
-         {Γ : DCtx γ}
-         {A : Type γ a}
-         {Δ : PCtx (a :: γ) δ}
-         {K : Skel δ b c}
-         {B : Type (a :: γ) b}
-         {C : Type (a :: (revappend δ γ)) c}
-         (K : (Γ , A) / Δ ⊩ K ∶ B > {!C!})
-         → Γ / (A , {!!}) ⊩ (· {!!}) ∶ Π A B > {!!} -}
