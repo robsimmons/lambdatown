@@ -300,11 +300,24 @@ module MINIMAL (sig : String → Maybe Class) where
    sub-wken2 (S Z) = S Z
    sub-wken2 (S (S n)) = S (S (S n))
 
+   sub-wken1 : ∀{Γ} {A B x : Class} → x ∈ A :: Γ → x ∈ A :: B :: Γ
+   sub-wken1 Z = Z
+   sub-wken1 (S n) = S (S n)
+
    sub-wkra : ∀{Δ Γ} {A B C x : Class}  
      → x ∈ C :: Δ ⟩⟩ (A :: B :: Γ) 
      → x ∈ Δ ⟩⟩ (A :: B :: C :: Γ)
    sub-wkra {Δ} Z = sub-⟩⟩-l {Δ} (S (S Z))
    sub-wkra {Δ} (S n) = sub-ra-congr {Δ} sub-wken2 n
+
+
+   ∧L₁ : ∀{Δ Γ A B C}
+      → Term (Δ ⟩⟩ (A :: Γ)) C
+      → Term (Δ ⟩⟩ ((A ∧ B) :: Γ)) C
+   ∧L₁ {Δ} D = 
+     subN 
+       (eta _ (var (sub-⟩⟩-l {Δ} Z)) (π₁ ⟨⟩) ⟨⟩) 
+       (→m (wk {!sub-exch-ra {Δ}!} (wk (sub-ra-congr {Δ} sub-wken1) D)))
 
    ⊃L : ∀{Δ Γ A B C} 
       → Term (Δ ⟩⟩ (B :: A :: Γ)) C 
