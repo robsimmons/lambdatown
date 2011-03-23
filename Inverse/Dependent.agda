@@ -40,6 +40,14 @@ module TYPES (sig : String → Maybe Class) where
    ssubA {δ} τ (Σ A B) = 
       Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
 
+   ⊃LA : ∀{δ γ a b c} 
+      → Type (δ ⟩⟩ (b :: a :: γ)) c 
+      → Type (δ ⟩⟩ (a :: (a ⊃ b) :: γ)) c
+   ⊃LA {δ} (c · K [ σ ]) = c · K [ ⊃Lσ {δ} σ ]
+   ⊃LA {δ} (Π A B) = Π (⊃LA {δ} A) {!!}
+--(wkA (sub-cons-congr (sub-ra-congr {δ} {!!})) B)
+   ⊃LA {δ} (Σ A B) = Σ (⊃LA {δ} A) {!!} 
+
 
    data Kind (γ : Ctx) : Class → Set where
       typ : Kind γ (con typ)
@@ -70,6 +78,11 @@ module TYPES (sig : String → Maybe Class) where
    subΔ M ⟨⟩ = ⟨⟩
    subΔ M (A , Δ) = subA M A , subΔ (wk sub-wken M) (wkΔ sub-exch Δ)
 
+   ⊃LΔ : ∀{δ γ a b δ'} 
+      → PCtx (δ ⟩⟩ (b :: a :: γ)) δ'
+      → PCtx (δ ⟩⟩ (a :: (a ⊃ b) :: γ)) δ'
+   ⊃LΔ ⟨⟩ = ⟨⟩
+   ⊃LΔ (A , Δ) = ⊃LA A , {!Δ!}
 
    _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
    Γ // ⟨⟩ = Γ
@@ -155,7 +168,7 @@ module DEPENDENT
             {B : Type (a :: γ) b}
             {C : Type (δ ⟩⟩ (b :: a :: γ)) c}
             → (Γ , A) / B / Δ ⊩ K ∶ C
-            → Γ / Π A B / wkA sub-wken A , {! ⊃LΔ Δ!} ⊩ (· K) ∶ {! ⊃LA C!}
+            → Γ / Π A B / wkA sub-wken A , {! Δ!} ⊩ (· K) ∶ ⊃LA {δ} C
          π₁ : ∀{a δ b c}
             {A : Type γ a}
             {Δ : PCtx (a :: γ) δ}

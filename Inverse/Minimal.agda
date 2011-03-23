@@ -275,6 +275,10 @@ module MINIMAL (sig : String → Maybe Class) where
    sub-ra-exch {δ} (S n) = 
       case (split-revappend δ n) sub-⟩⟩-r (λ x → sub-⟩⟩-l {δ} (S x))
 
+   sub-ra-congr : ∀{δ γ γ'} → γ ⊆ γ' → (δ ⟩⟩ γ) ⊆ (δ ⟩⟩ γ')
+   sub-ra-congr {[]} θ = θ
+   sub-ra-congr {x :: xs} θ = sub-ra-congr {xs} (sub-cons-congr θ) 
+
    mutual
       ssubN : ∀{Δ Γ n A} → Subst Γ Δ → Term' (Δ ⟩⟩ Γ) n A → Term Γ A
       ssubN τ (var x · K [ σ ]) = 
@@ -290,3 +294,30 @@ module MINIMAL (sig : String → Maybe Class) where
       ssubσ τ (N , σ) = ssubN τ N , ssubσ τ σ
 
    {- PART 7 : LEFT RULES -}
+
+   sub-wken2 : ∀{Γ} {A B C x : Class} → x ∈ B :: A :: Γ → x ∈ B :: A :: C :: Γ
+   sub-wken2 Z = Z
+   sub-wken2 (S Z) = S Z
+   sub-wken2 (S (S n)) = S (S (S n))
+
+   sub-wkra : ∀{Δ Γ} {A B C x : Class}  
+     → x ∈ C :: Δ ⟩⟩ (A :: B :: Γ) 
+     → x ∈ Δ ⟩⟩ (A :: B :: C :: Γ)
+   sub-wkra {Δ} Z = sub-⟩⟩-l {Δ} (S (S Z))
+   sub-wkra {Δ} (S n) = sub-ra-congr {Δ} sub-wken2 n
+
+   ⊃L : ∀{Δ Γ A B C} 
+      → Term (Δ ⟩⟩ (B :: A :: Γ)) C 
+      → Term (Δ ⟩⟩ (A :: (A ⊃ B) :: Γ)) C
+   ⊃L {Δ} D = 
+      subN
+       (eta _ (var (sub-⟩⟩-l {Δ} (S Z))) (· ⟨⟩) (η' (sub-⟩⟩-l {Δ} Z) , ⟨⟩))
+       (→m (wk (sub-exch-ra {Δ}) (wk (sub-ra-congr {Δ} sub-wken2) D)))
+
+   ⊃Lσ : ∀{Δ Γ A B Δ'} 
+      → Subst (Δ ⟩⟩ (B :: A :: Γ)) Δ'
+      → Subst (Δ ⟩⟩ (A :: (A ⊃ B) :: Γ)) Δ'
+   ⊃Lσ ⟨⟩ = ⟨⟩
+   ⊃Lσ {Δ} (N , σ) = ⊃L {Δ} N , ⊃Lσ {Δ} σ
+
+   
