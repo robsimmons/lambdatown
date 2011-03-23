@@ -23,6 +23,24 @@ module TYPES (sig : String → Maybe Class) where
          (B : Type (a :: γ) b)
          → Type γ (a ∧ b)
 
+   wkA : ∀{γ γ' a} → γ ⊆ γ' → Type γ a → Type γ' a
+   wkA θ (c · K [ σ ]) = c · K [ wkσ θ σ ]
+   wkA θ (Π A B) = Π (wkA θ A) (wkA (sub-cons-congr θ) B)
+   wkA θ (Σ A B) = Σ (wkA θ A) (wkA (sub-cons-congr θ) B)
+
+   subA : ∀{γ a c} → Term γ a → Type (a :: γ) c → Type γ c
+   subA M (c · K [ σ ]) = c · K [ subσ M (→mσ σ) ]
+   subA M (Π A B) = Π (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
+   subA M (Σ A B) = Σ (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
+
+   ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
+   ssubA τ (c · K [ σ' ])  = c · K [ ssubσ τ (→mσ σ') ]
+   ssubA {δ} τ (Π A B) = 
+      Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
+   ssubA {δ} τ (Σ A B) = 
+      Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
+
+
    data Kind (γ : Ctx) : Class → Set where
       typ : Kind γ (con typ)
       Π : ∀{a b}
@@ -44,6 +62,15 @@ module TYPES (sig : String → Maybe Class) where
           (Δ : PCtx (a :: γ) δ)
           → PCtx γ (a :: δ)
 
+   wkΔ : ∀{γ γ' δ} → γ ⊆ γ' → PCtx γ δ → PCtx γ' δ
+   wkΔ θ ⟨⟩ = ⟨⟩
+   wkΔ θ (A , Δ) = wkA θ A , wkΔ (sub-cons-congr θ) Δ
+
+   subΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
+   subΔ M ⟨⟩ = ⟨⟩
+   subΔ M (A , Δ) = subA M A , subΔ (wk sub-wken M) (wkΔ sub-exch Δ)
+
+
    _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
    Γ // ⟨⟩ = Γ
    Γ // (A , Δ) = (Γ , A) // Δ
@@ -56,35 +83,12 @@ module TYPES (sig : String → Maybe Class) where
          (K : Kind [] (valOf (sig c) {ch}))
          → SigItem c
 
-   wkA : ∀{γ γ' a} → γ ⊆ γ' → Type γ a → Type γ' a
-   wkA θ (c · K [ σ ]) = c · K [ wkσ θ σ ]
-   wkA θ (Π A B) = Π (wkA θ A) (wkA (sub-cons-congr θ) B)
-   wkA θ (Σ A B) = Σ (wkA θ A) (wkA (sub-cons-congr θ) B)
 
-   wkΔ : ∀{γ γ' δ} → γ ⊆ γ' → PCtx γ δ → PCtx γ' δ
-   wkΔ θ ⟨⟩ = ⟨⟩
-   wkΔ θ (A , Δ) = wkA θ A , wkΔ (sub-cons-congr θ) Δ
+   Γ→ : ∀{γ a} → a ∈ γ → DCtx γ → Type γ a
+   Γ→ Z (Γ , A) = wkA sub-wken A
+   Γ→ (S x) (Γ , A) = wkA sub-wken (Γ→ x Γ)
 
-   lookΓ : ∀{γ a} → DCtx γ → a ∈ γ → Type γ a
-   lookΓ ⟨⟩ ()
-   lookΓ (Γ , A) Z = wkA sub-wken A
-   lookΓ (Γ , A) (S x) = wkA sub-wken (lookΓ Γ x)
 
-   subA : ∀{γ a c} → Term γ a → Type (a :: γ) c → Type γ c
-   subA M (c · K [ σ ]) = c · K [ subσ M (→mσ σ) ]
-   subA M (Π A B) = Π (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
-   subA M (Σ A B) = Σ (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
-
-   subΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
-   subΔ M ⟨⟩ = ⟨⟩
-   subΔ M (A , Δ) = subA M A , subΔ (wk sub-wken M) (wkΔ sub-exch Δ)
-
-   ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
-   ssubA τ (c · K [ σ' ])  = c · K [ ssubσ τ (→mσ σ') ]
-   ssubA {δ} τ (Π A B) = 
-      Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
-   ssubA {δ} τ (Σ A B) = 
-      Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
 
 module DEPENDENT 
   (sig : String → Maybe Class
@@ -118,7 +122,7 @@ module DEPENDENT
             {C : Type (δ ⟩⟩ (a :: γ)) (con (atm q))}
             {σ : Subst γ δ}
             -- → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > A
-            → Γ / lookΓ Γ x / Δ ⊩ K ∶ C
+            → Γ / Γ→ x Γ / Δ ⊩ K ∶ C
             → Γ ⊢ σ ∶ subΔ (η' x) Δ ∶ctx
             → Γ ⊢ var x · K [ σ ] ∶ ssubA (η' x , σ) C ∶type
          Λ : ∀{a b}
@@ -184,7 +188,7 @@ module DEPENDENT
          → Γ ⊢ N • K [ σ ] ∶ ssubA (N , σ) C ∶type 
       red-ok DM ⟨⟩ ⟨⟩ = {! !} -- weakening, substituting does nothing
       red-ok (Λ DM) (· DK) (DN , Dσ) = {!!}
-      red-ok (DM₁ , DM₂) (π₁ DK) Dσ = ? -- red-ok DM₁ DK {!Dσ!}
+      red-ok (DM₁ , DM₂) (π₁ DK) Dσ = {!!} -- red-ok DM₁ DK {!Dσ!}
       red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {!!} {!!} 
 
 {-
