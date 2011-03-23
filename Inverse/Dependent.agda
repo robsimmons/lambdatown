@@ -80,7 +80,7 @@ module TYPES (sig : String → Maybe Class) where
    subΔ M (A , Δ) = subA M A , subΔ (wk sub-wken M) (wkΔ sub-exch Δ)
 
    ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
-   ssubA τ (c · K [ σ' ])  = {!!}
+   ssubA τ (c · K [ σ' ])  = c · K [ ssubσ τ (→mσ σ') ]
    ssubA {δ} τ (Π A B) = 
       Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
    ssubA {δ} τ (Σ A B) = 
@@ -184,7 +184,7 @@ module DEPENDENT
          → Γ ⊢ N • K [ σ ] ∶ ssubA (N , σ) C ∶type 
       red-ok DM ⟨⟩ ⟨⟩ = {! !} -- weakening, substituting does nothing
       red-ok (Λ DM) (· DK) (DN , Dσ) = {!!}
-      red-ok (DM₁ , DM₂) (π₁ DK) Dσ = red-ok DM₁ DK {!Dσ!}
+      red-ok (DM₁ , DM₂) (π₁ DK) Dσ = ? -- red-ok DM₁ DK {!Dσ!}
       red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {!!} {!!} 
 
 {-
