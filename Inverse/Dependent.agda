@@ -5,6 +5,8 @@ module Inverse.Dependent where
 
 open LIST.SET public
 
+open import Lib.List.In
+
 module TYPES (sig : String → Maybe Class) where
    
    open MINIMAL sig
@@ -40,13 +42,36 @@ module TYPES (sig : String → Maybe Class) where
    ssubA {δ} τ (Σ A B) = 
       Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
 
+   sub-append-ra : ∀{δ a γ} → ((δ ++ [ a ]) ⟩⟩ γ) ⊆ (a :: δ ⟩⟩ γ)
+   sub-append-ra = {!!}
+
+   sub-ra-append : ∀{δ a γ} → (a :: δ ⟩⟩ γ) ⊆ ((δ ++ [ a ]) ⟩⟩ γ)
+   sub-ra-append {[]} n = n
+   sub-ra-append {x :: xs} {a} Z = sub-⟩⟩-r {xs ++ [ a ]} (append-in xs Z)
+   sub-ra-append {x :: xs} {a} (S n) = {!!}
+   --with split-revappend (xs) n
+   --... | Inl n' = {!!} --{!n'!}
+   --... | Inr n' = {!!}
+
    ⊃LA : ∀{δ γ a b c} 
       → Type (δ ⟩⟩ (b :: a :: γ)) c 
       → Type (δ ⟩⟩ (a :: (a ⊃ b) :: γ)) c
    ⊃LA {δ} (c · K [ σ ]) = c · K [ ⊃Lσ {δ} σ ]
-   ⊃LA {δ} (Π A B) = Π (⊃LA {δ} A) {!!}
---(wkA (sub-cons-congr (sub-ra-congr {δ} {!!})) B)
-   ⊃LA {δ} (Σ A B) = Σ (⊃LA {δ} A) {!!} 
+   ⊃LA {δ} {γ} {a} {b} (Π {a'} A B) = 
+     Π (⊃LA {δ} A) 
+       (wkA (sub-append-ra {δ}) 
+            (⊃LA {δ ++ [ a' ]} (wkA (sub-ra-append {δ}) B)))
+   ⊃LA {δ} {γ} {a} {b} (Σ {a'} A B) = 
+     Σ (⊃LA {δ} A) 
+       (wkA (sub-append-ra {δ}) 
+            (⊃LA {δ ++ [ a' ]} (wkA (sub-ra-append {δ}) B)))
+  
+   ∧L₁A : ∀{δ γ a b c} 
+      → Type (δ ⟩⟩ (a :: γ)) c 
+      → Type (δ ⟩⟩ ((a ∧ b) :: γ)) c 
+   ∧L₁A {δ} (c · K [ σ ]) = c · K [ ∧L₁σ {δ} σ ]
+   ∧L₁A {δ} (Π A B) = Π (∧L₁A {δ} A) (∧L₁A B)
+   ∧L₁A {δ} (Σ A B) = Σ (∧L₁A {δ} A) (∧L₁A B) 
 
 
    data Kind (γ : Ctx) : Class → Set where
