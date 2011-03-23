@@ -162,32 +162,32 @@ module MINIMAL (sig : String → Maybe Class) where
    {- PART 4: SUBSTITUTION -}
 
    mutual
-      subst : ∀{Γ A C n} 
+      subN : ∀{Γ A C n} 
          → Term Γ A 
          → Term' (A :: Γ) n C 
          → Term Γ C
-      subst M (Λ N) = Λ (subst (wk sub-wken M) (wk' sub-exch N))
-      subst M ( N₁ , N₂ ) = subst M N₁ , subst M N₂
-      subst M (var (S x) · K [ σ ]) = var x · K [ substσ M σ ]
-      subst M (con c · K [ σ ]) = con c · K [ substσ M σ ]
-      subst M (var Z · K [ σ ]) = red M K (substσ M σ)
+      subN M (Λ N) = Λ (subN (wk sub-wken M) (wk' sub-exch N))
+      subN M (N₁ , N₂) = subN M N₁ , subN M N₂
+      subN M (var (S x) · K [ σ ]) = var x · K [ subσ M σ ]
+      subN M (con c · K [ σ ]) = con c · K [ subσ M σ ]
+      subN M (var Z · K [ σ ]) = M • K [ subσ M σ ]
 
-      red : ∀{Γ Δ A C}
+      _•_[_] : ∀{Γ Δ A C}
          → Term Γ A 
          → Skel Δ A C
          → Subst Γ Δ
          → Term Γ C
-      red M ⟨⟩ σ = M
-      red (Λ M) (· K) (N , σ) = red (subst N (→m M)) K σ 
-      red (M₁ , M₂) (π₁ K) σ = red M₁ K σ
-      red (M₁ , M₂) (π₂ K) σ = red M₂ K σ
+      M • ⟨⟩ [ σ ] = M
+      Λ M • (· K) [ N , σ ] = (subN N (→m M)) • K [ σ ] 
+      (M₁ , M₂) • (π₁ K) [ σ ] = M₁ • K [ σ ]
+      (M₁ , M₂) • (π₂ K) [ σ ] = M₂ • K [ σ ]
 
-      substσ : ∀{Γ Δ A s} 
+      subσ : ∀{Γ Δ A s} 
          → Term Γ A 
          → Subst' (A :: Γ) s Δ
          → Subst Γ Δ
-      substσ M ⟨⟩ = ⟨⟩
-      substσ M (N , σ) = subst M N , substσ M σ
+      subσ M ⟨⟩ = ⟨⟩
+      subσ M (N , σ) = subN M N , subσ M σ
 
 
    {- PART 5: ETA-EXPANSION -}
@@ -236,18 +236,57 @@ module MINIMAL (sig : String → Maybe Class) where
 
    {- PART 6: APPLYING AND COMPOSING SUBSTITUTIONS -} 
 
-   lookup : ∀{Γ Γ' A} → A ∈ Γ' → Subst Γ Γ' → Term Γ A
-   lookup () ⟨⟩
-   lookup Z (N , σ) = N
-   lookup (S x) (N , σ) = lookup x σ
+   σ→ : ∀{Γ Δ A} → A ∈ Δ → Subst Γ Δ → Term Γ A
+   σ→ () ⟨⟩
+   σ→ Z (N , σ) = N
+   σ→ (S x) (N , σ) = σ→ x σ
+
+   -- XXX add to stdlib
+   _⟩⟩_ : Ctx → Ctx → Ctx  
+   [] ⟩⟩ γ = γ
+   (a :: δ) ⟩⟩ γ = δ ⟩⟩ (a :: γ)
+
+   sub-⟩⟩-l : ∀{δ γ} → γ ⊆ (δ ⟩⟩ γ)
+   sub-⟩⟩-l {[]} n = n
+   sub-⟩⟩-l {x :: xs} n = sub-⟩⟩-l {xs} (S n)
+
+   sub-⟩⟩-r : ∀{δ γ} → δ ⊆ (δ ⟩⟩ γ)
+   sub-⟩⟩-r {[]} () 
+   sub-⟩⟩-r {x :: xs} Z = sub-⟩⟩-l {xs} Z
+   sub-⟩⟩-r {x :: xs} (S n) = sub-⟩⟩-r {xs} n
+
+   split-revappend : ∀{x ys} (xs : Ctx)
+      → x ∈ (xs ⟩⟩ ys)
+      → (x ∈ xs) + (x ∈ ys)
+   split-revappend [] n = Inr n
+   split-revappend (x :: xs) n with split-revappend xs n
+   ... | Inl n' = Inl (S n')
+   ... | Inr Z = Inl Z
+   ... | Inr (S n') = Inr n'
+
+   sub-exch-ra : ∀{δ a γ} → (δ ⟩⟩ (a :: γ)) ⊆ (a :: δ ⟩⟩ γ)
+   sub-exch-ra {δ} n with split-revappend δ n
+   ... | Inl n' = S (sub-⟩⟩-r n')
+   ... | Inr Z = Z
+   ... | Inr (S n') = S (sub-⟩⟩-l {δ} n')
+
+   sub-ra-exch : ∀{δ a γ} → (a :: δ ⟩⟩ γ) ⊆ (δ ⟩⟩ (a :: γ))
+   sub-ra-exch {δ} Z = sub-⟩⟩-l {δ} Z
+   sub-ra-exch {δ} (S n) = 
+      case (split-revappend δ n) sub-⟩⟩-r (λ x → sub-⟩⟩-l {δ} (S x))
 
    mutual
-      _[_]N : ∀{Γ Γ' A} → Term Γ' A → Subst Γ Γ' → Term Γ A
-      con c · K [ σ' ] [ σ ]N = con c · K [ σ' [ σ ]σ ]
-      var x · K [ σ' ] [ σ ]N = red (lookup x σ) K (σ' [ σ ]σ)
-      Λ N [ σ ]N = Λ (N [ η , wkσ sub-wken σ ]N)
-      (N₁ , N₂) [ σ ]N = (N₁ [ σ ]N) , (N₂ [ σ ]N)
+      ssubN : ∀{Δ Γ n A} → Subst Γ Δ → Term' (Δ ⟩⟩ Γ) n A → Term Γ A
+      ssubN τ (var x · K [ σ ]) = 
+         case (split-revappend _ x) 
+          (λ x' → σ→ x' τ • K [ ssubσ τ σ ]) 
+          (λ x' → var x' · K [ ssubσ τ σ ])
+      ssubN τ (con c · K [ σ ]) = con c · K [ ssubσ τ σ ]
+      ssubN {Δ} τ (Λ N) = Λ (ssubN (wkσ sub-wken τ) (wk' (sub-ra-exch {Δ}) N))
+      ssubN τ (N₁ , N₂) = (ssubN τ N₁) , (ssubN τ N₂)
 
-      _[_]σ : ∀{Γ Γ' Δ} → Subst Γ' Δ → Subst Γ Γ' → Subst Γ Δ
-      ⟨⟩ [ σ ]σ = ⟨⟩
-      (N , σ') [ σ ]σ = (N [ σ ]N) , (σ' [ σ ]σ)
+      ssubσ : ∀{Δ Γ s Δ'} → Subst Γ Δ → Subst' (Δ ⟩⟩ Γ) s Δ' → Subst Γ Δ'
+      ssubσ τ ⟨⟩ = ⟨⟩
+      ssubσ τ (N , σ) = ssubN τ N , ssubσ τ σ
+
+   {- PART 7 : LEFT RULES -}

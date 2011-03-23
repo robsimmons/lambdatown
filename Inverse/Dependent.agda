@@ -44,21 +44,7 @@ module TYPES (sig : String → Maybe Class) where
           (Δ : PCtx (a :: γ) δ)
           → PCtx γ (a :: δ)
 
-   -- XXX add to stdlib
-   _⟩⟨⟩_ : Ctx → Ctx → Ctx  
-   [] ⟩⟨⟩ γ = γ
-   (a :: δ) ⟩⟨⟩ γ = δ ⟩⟨⟩ (a :: γ)
-
-   sub-⟩⟨⟩ : ∀{δ γ} → γ ⊆ (δ ⟩⟨⟩ γ)
-   sub-⟩⟨⟩ x = {!!}
-
-   sub-exch-ra : ∀{δ a γ} → (δ ⟩⟨⟩ (a :: γ)) ⊆ (a :: δ ⟩⟨⟩ γ)
-   sub-exch-ra x = {!!}
-
-   sub-ra-exch : ∀{δ a γ} → (a :: δ ⟩⟨⟩ γ) ⊆ (δ ⟩⟨⟩ (a :: γ))
-   sub-ra-exch x = {!!}
-
-   _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟨⟩ γ)
+   _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
    Γ // ⟨⟩ = Γ
    Γ // (A , Δ) = (Γ , A) // Δ
 
@@ -71,31 +57,34 @@ module TYPES (sig : String → Maybe Class) where
          → SigItem c
 
    wkA : ∀{γ γ' a} → γ ⊆ γ' → Type γ a → Type γ' a
-   wkA = {!!}
+   wkA θ (c · K [ σ ]) = c · K [ wkσ θ σ ]
+   wkA θ (Π A B) = Π (wkA θ A) (wkA (sub-cons-congr θ) B)
+   wkA θ (Σ A B) = Σ (wkA θ A) (wkA (sub-cons-congr θ) B)
 
    wkΔ : ∀{γ γ' δ} → γ ⊆ γ' → PCtx γ δ → PCtx γ' δ
-   wkΔ = {!!}
+   wkΔ θ ⟨⟩ = ⟨⟩
+   wkΔ θ (A , Δ) = wkA θ A , wkΔ (sub-cons-congr θ) Δ
 
    lookΓ : ∀{γ a} → DCtx γ → a ∈ γ → Type γ a
    lookΓ ⟨⟩ ()
    lookΓ (Γ , A) Z = wkA sub-wken A
    lookΓ (Γ , A) (S x) = wkA sub-wken (lookΓ Γ x)
 
-   substA : ∀{γ a c} → Term γ a → Type (a :: γ) c → Type γ c
-   substA M (c · K [ σ ]) = c · K [ substσ M (→mσ σ) ]
-   substA M (Π A B) = Π (substA M A) (substA (wk sub-wken M) (wkA sub-exch B))
-   substA M (Σ A B) = Σ (substA M A) (substA (wk sub-wken M) (wkA sub-exch B))
+   subA : ∀{γ a c} → Term γ a → Type (a :: γ) c → Type γ c
+   subA M (c · K [ σ ]) = c · K [ subσ M (→mσ σ) ]
+   subA M (Π A B) = Π (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
+   subA M (Σ A B) = Σ (subA M A) (subA (wk sub-wken M) (wkA sub-exch B))
 
-   substΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
-   substΔ N ⟨⟩ = ⟨⟩
-   substΔ N (A , Δ) = substA N A , substΔ (wk sub-wken N) (wkΔ sub-exch Δ)
+   subΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
+   subΔ M ⟨⟩ = ⟨⟩
+   subΔ M (A , Δ) = subA M A , subΔ (wk sub-wken M) (wkΔ sub-exch Δ)
 
-   subA : ∀{δ γ a} → Type (δ ⟩⟨⟩ γ) a → Subst γ δ → Type γ a
-   subA (c · K [ σ' ]) σ  = {!!}
-   subA {δ} (Π A B) σ = 
-      Π (subA A σ) (subA (wkA (sub-ra-exch {δ}) B) (wkσ sub-wken σ))
-   subA {δ} (Σ A B) σ = 
-      Σ (subA A σ) (subA (wkA (sub-ra-exch {δ}) B) (wkσ sub-wken σ))
+   ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
+   ssubA τ (c · K [ σ' ])  = {!!}
+   ssubA {δ} τ (Π A B) = 
+      Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
+   ssubA {δ} τ (Σ A B) = 
+      Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
 
 module DEPENDENT 
   (sig : String → Maybe Class
@@ -115,7 +104,7 @@ module DEPENDENT
             {σ : Subst γ δ}
             {Δ : PCtx (a :: γ) δ}
             → Γ ⊢ N ∶ A ∶type
-            → Γ ⊢ σ ∶ substΔ N Δ ∶ctx
+            → Γ ⊢ σ ∶ subΔ N Δ ∶ctx
             → Γ ⊢ N , σ ∶ A , Δ ∶ctx
 
       data _⊢_∶_∶type {γ : _} (Γ : DCtx γ) : ∀{a} 
@@ -126,12 +115,12 @@ module DEPENDENT
             {x : a ∈ γ}
             {K : Skel δ a (con (atm q))}
             {ch : Check (isSome (Sig c))}
-            {C : Type (δ ⟩⟨⟩ (a :: γ)) (con (atm q))}
+            {C : Type (δ ⟩⟩ (a :: γ)) (con (atm q))}
             {σ : Subst γ δ}
             -- → Γ / Δ ⊩ K ∶ (lookΓ Γ x) > A
             → Γ / lookΓ Γ x / Δ ⊩ K ∶ C
-            → Γ ⊢ σ ∶ substΔ (η' x) Δ ∶ctx
-            → Γ ⊢ var x · K [ σ ] ∶ subA C (η' x , σ) ∶type
+            → Γ ⊢ σ ∶ subΔ (η' x) Δ ∶ctx
+            → Γ ⊢ var x · K [ σ ] ∶ ssubA (η' x , σ) C ∶type
          Λ : ∀{a b}
             {A : Type γ a}
             {B : Type (a :: γ) b}
@@ -144,14 +133,14 @@ module DEPENDENT
             {N₁ : Term γ a}
             {N₂ : Term γ b}
             → Γ ⊢ N₁ ∶ A ∶type
-            → Γ ⊢ N₂ ∶ substA N₁ B ∶type
+            → Γ ⊢ N₂ ∶ subA N₁ B ∶type
             → Γ ⊢ N₁ , N₂ ∶ Σ A B ∶type
 
       data _/_/_⊩_∶_ {γ : _} (Γ : DCtx γ) : ∀{δ a c}
             → Type γ a
             → PCtx (a :: γ) δ 
             → Skel δ a c
-            → Type (δ ⟩⟨⟩ (a :: γ)) c → Set where 
+            → Type (δ ⟩⟩ (a :: γ)) c → Set where 
          ⟨⟩ : ∀{a} 
             {A : Type γ a} 
             → Γ / A / ⟨⟩ ⊩ ⟨⟩ ∶ wkA sub-wken A
@@ -160,7 +149,7 @@ module DEPENDENT
             {Δ : PCtx (b :: a :: γ) δ}
             {K : Skel δ b c}
             {B : Type (a :: γ) b}
-            {C : Type (δ ⟩⟨⟩ (b :: a :: γ)) c}
+            {C : Type (δ ⟩⟩ (b :: a :: γ)) c}
             → (Γ , A) / B / Δ ⊩ K ∶ C
             → Γ / Π A B / wkA sub-wken A , {! ⊃LΔ Δ!} ⊩ (· K) ∶ {! ⊃LA C!}
          π₁ : ∀{a δ b c}
@@ -168,7 +157,7 @@ module DEPENDENT
             {Δ : PCtx (a :: γ) δ}
             {K : Skel δ a c}
             {B : Type (a :: γ) b}
-            {C : Type (δ ⟩⟨⟩ (a :: γ)) c}
+            {C : Type (δ ⟩⟩ (a :: γ)) c}
             → Γ / A / Δ ⊩ K ∶ C
             → Γ / Σ A B / {! ∧L₁Δ Δ!} ⊩ (π₁ K) ∶ {! ∧L₁A C!}
          π₂ : ∀{a δ b c}
@@ -176,7 +165,7 @@ module DEPENDENT
             {Δ : PCtx (b :: a :: γ) δ}
             {K : Skel δ b c}
             {B : Type (a :: γ) b}
-            {C : Type (δ ⟩⟨⟩ (b :: a :: γ)) c}
+            {C : Type (δ ⟩⟩ (b :: a :: γ)) c}
             → (Γ , A) / B / Δ ⊩ K ∶ C 
             → Γ / Σ A B / {! ∧LΔ Δ!} ⊩ (π₂ K) ∶ {! ∧LA C!} 
 
@@ -187,16 +176,16 @@ module DEPENDENT
          {A : Type γ a}
          {Δ : PCtx (a :: γ) δ}
          {K : Skel δ a c}
-         {C : Type (δ ⟩⟨⟩ (a :: γ)) c}
+         {C : Type (δ ⟩⟩ (a :: γ)) c}
          {σ : Subst γ δ}
          → Γ ⊢ N ∶ A ∶type
          → Γ / A / Δ ⊩ K ∶ C
-         → Γ ⊢ σ ∶ substΔ N Δ ∶ctx
-         → Γ ⊢ red N K σ ∶ subA C (N , σ) ∶type 
+         → Γ ⊢ σ ∶ subΔ N Δ ∶ctx
+         → Γ ⊢ N • K [ σ ] ∶ ssubA (N , σ) C ∶type 
       red-ok DM ⟨⟩ ⟨⟩ = {! !} -- weakening, substituting does nothing
       red-ok (Λ DM) (· DK) (DN , Dσ) = {!!}
       red-ok (DM₁ , DM₂) (π₁ DK) Dσ = red-ok DM₁ DK {!Dσ!}
-      red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {! -- DK --!} {!!} 
+      red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {!!} {!!} 
 
 {-
       data _/_⊩_∶_>_ {γ : _} : ∀{δ a c} 
