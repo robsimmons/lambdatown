@@ -317,7 +317,7 @@ module MINIMAL (sig : String → Maybe Class) where
    ∧L₁ {Δ} D = 
      subN 
        (eta _ (var (sub-⟩⟩-l {Δ} Z)) (π₁ ⟨⟩) ⟨⟩) 
-       (→m (wk {!sub-exch-ra {Δ}!} (wk (sub-ra-congr {Δ} sub-wken1) D)))
+       (→m (wk (sub-exch-ra {Δ}) (wk (sub-ra-congr {Δ} sub-wken1) D)))
 
    ⊃L : ∀{Δ Γ A B C} 
       → Term (Δ ⟩⟩ (B :: A :: Γ)) C 
