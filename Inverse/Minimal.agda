@@ -315,15 +315,30 @@ module MINIMAL (sig : String → Maybe Class) where
       → Term (Δ ⟩⟩ (A :: Γ)) C
       → Term (Δ ⟩⟩ ((A ∧ B) :: Γ)) C
    ∧L₁ {Δ} D = 
-     subN 
-       (eta _ (var (sub-⟩⟩-l {Δ} Z)) (π₁ ⟨⟩) ⟨⟩) 
+     subN
+       (eta _ (var (sub-⟩⟩-l {Δ} Z)) (π₁ ⟨⟩) ⟨⟩)
        (→m (wk (sub-exch-ra {Δ}) (wk (sub-ra-congr {Δ} sub-wken1) D)))
+
+   ∧L : ∀{Δ Γ A B C}
+     → Term (Δ ⟩⟩ (B :: A ::  Γ)) C
+     → Term (Δ ⟩⟩ ((A ∧ B) :: Γ)) C
+   ∧L {Δ} {Γ} {A} {B} D =
+      subN (eta _ (var (sub-⟩⟩-l {Δ} Z)) (π₂ ⟨⟩) ⟨⟩) 
+           (→m (wk (sub-exch-ra {Δ}) (∧L₁ {B :: Δ} {Γ} {A} {B} D)))
+
+   ∧Lσ : ∀{Δ Γ A B Δ'} 
+      → Subst (Δ ⟩⟩ (B :: A :: Γ)) Δ'
+      → Subst (Δ ⟩⟩ ((A ∧ B) :: Γ)) Δ'
+   ∧Lσ ⟨⟩ = ⟨⟩
+   ∧Lσ {Δ} (N , σ) = ∧L {Δ} N , ∧Lσ {Δ} σ
+
 
    ∧L₁σ : ∀{Δ Γ A B Δ'} 
       → Subst (Δ ⟩⟩ (A :: Γ)) Δ'
       → Subst (Δ ⟩⟩ ((A ∧ B) :: Γ)) Δ'
    ∧L₁σ ⟨⟩ = ⟨⟩
    ∧L₁σ {Δ} (N , σ) = ∧L₁ {Δ} N , ∧L₁σ {Δ} σ
+
 
    ⊃L : ∀{Δ Γ A B C} 
       → Term (Δ ⟩⟩ (B :: A :: Γ)) C 

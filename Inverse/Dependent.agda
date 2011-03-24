@@ -90,6 +90,18 @@ module TYPES (sig : String → Maybe Class) where
        (wkA-append-ra {δ} (\x → ∧L₁A {x}) B)
 
 
+   ∧LA : ∀{δ γ a b c} 
+      → Type (δ ⟩⟩ (b :: a :: γ)) c 
+      → Type (δ ⟩⟩ ((a ∧ b) :: γ)) c 
+   ∧LA {δ} (c · K [ σ ]) = c · K [ ∧Lσ {δ} σ ]
+   ∧LA {δ} (Π {a'} A B) =
+     Π (∧LA {δ} A)
+       (wkA-append-ra {δ} (\x → ∧LA {x}) B)
+   ∧LA {δ} (Σ {a'} A B) =
+     Σ (∧LA {δ} A)
+       (wkA-append-ra {δ} (\x → ∧LA {x}) B)
+
+
    data Kind (γ : Ctx) : Class → Set where
       typ : Kind γ (con typ)
       Π : ∀{a b}
@@ -134,6 +146,15 @@ module TYPES (sig : String → Maybe Class) where
    ∧L₁Δ {δ} (_,_ {a'} A Δ) = 
      ∧L₁A {δ} A , (wkΔ (sub-append-ra {δ}) 
                       (∧L₁Δ {δ ++ [ a' ]} (wkΔ (sub-ra-append {δ}) Δ)))
+
+   ∧LΔ : ∀{δ γ a b δ'} 
+      → PCtx (δ ⟩⟩ (b :: a :: γ)) δ'
+      → PCtx (δ ⟩⟩ ((a ∧ b) :: γ)) δ'
+   ∧LΔ ⟨⟩ = ⟨⟩
+   ∧LΔ {δ} (_,_ {a'} A Δ) = 
+     ∧LA {δ} A , (wkΔ (sub-append-ra {δ}) 
+                      (∧LΔ {δ ++ [ a' ]} (wkΔ (sub-ra-append {δ}) Δ)))
+
 
    _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
    Γ // ⟨⟩ = Γ
@@ -234,8 +255,8 @@ module DEPENDENT
             {K : Skel δ b c}
             {B : Type (a :: γ) b}
             {C : Type (δ ⟩⟩ (b :: a :: γ)) c}
-            → (Γ , A) / B / Δ ⊩ K ∶ C 
-            → Γ / Σ A B / {! ∧LΔ Δ!} ⊩ (π₂ K) ∶ {! ∧LA C!} 
+            → (Γ , A) / B / Δ ⊩ K ∶ C
+            → Γ / Σ A B / ∧LΔ {[]} Δ ⊩ (π₂ K) ∶ ∧LA {δ} C
 
    mutual 
       red-ok : ∀{γ a δ c}
@@ -253,7 +274,7 @@ module DEPENDENT
       red-ok DM ⟨⟩ ⟨⟩ = {! !} -- weakening, substituting does nothing
       red-ok (Λ DM) (· DK) (DN , Dσ) = {!!}
       red-ok (DM₁ , DM₂) (π₁ DK) Dσ = {!!} -- red-ok DM₁ DK {!Dσ!}
-      red-ok (DM₁ , DM₂) (π₂ DK) Dσ = red-ok DM₂ {!!} {!!} 
+      red-ok (DM₁ , DM₂) (π₂ DK) Dσ = {!!}
 
 {-
       data _/_⊩_∶_>_ {γ : _} : ∀{δ a c} 
