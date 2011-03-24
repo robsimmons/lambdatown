@@ -43,35 +43,51 @@ module TYPES (sig : String → Maybe Class) where
       Σ (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
 
    sub-append-ra : ∀{δ a γ} → ((δ ++ [ a ]) ⟩⟩ γ) ⊆ (a :: δ ⟩⟩ γ)
-   sub-append-ra = {!!}
+   sub-append-ra {[]} n = n
+   sub-append-ra {x :: xs} {a} n with split-revappend (xs ++ [ a ]) n
+   ... | Inl n' = sub-append-ra {xs} (sub-⟩⟩-r n')
+   ... | Inr n' = S (sub-⟩⟩-l {xs} n')
+
 
    sub-ra-append : ∀{δ a γ} → (a :: δ ⟩⟩ γ) ⊆ ((δ ++ [ a ]) ⟩⟩ γ)
    sub-ra-append {[]} n = n
    sub-ra-append {x :: xs} {a} Z = sub-⟩⟩-r {xs ++ [ a ]} (append-in xs Z)
-   sub-ra-append {x :: xs} {a} (S n) = {!!}
-   --with split-revappend (xs) n
-   --... | Inl n' = {!!} --{!n'!}
-   --... | Inr n' = {!!}
+   sub-ra-append {x :: xs} {a} (S n) with split-revappend (xs) n
+   ... | Inl n' = sub-⟩⟩-r (sub-appendr xs [ a ] n')
+   ... | Inr n' = sub-⟩⟩-l {xs ++ [ a ]} n'
+
+
+   --not sure if this really helps anything. May be better to inline
+   wkA-append-ra : ∀{δ a γ γ' c}
+     → (∀ δ → Type (δ ⟩⟩ γ) c → Type (δ ⟩⟩ γ') c)
+     → Type (a :: δ ⟩⟩ γ) c
+     → Type (a :: δ ⟩⟩ γ') c
+   wkA-append-ra {δ} {a} foo B =
+       (wkA (sub-append-ra {δ}) 
+            (foo (δ ++ [ a ]) (wkA (sub-ra-append {δ}) B)))
 
    ⊃LA : ∀{δ γ a b c} 
       → Type (δ ⟩⟩ (b :: a :: γ)) c 
       → Type (δ ⟩⟩ (a :: (a ⊃ b) :: γ)) c
    ⊃LA {δ} (c · K [ σ ]) = c · K [ ⊃Lσ {δ} σ ]
    ⊃LA {δ} {γ} {a} {b} (Π {a'} A B) = 
-     Π (⊃LA {δ} A) 
-       (wkA (sub-append-ra {δ}) 
-            (⊃LA {δ ++ [ a' ]} (wkA (sub-ra-append {δ}) B)))
+     Π (⊃LA {δ} A)
+       (wkA-append-ra {δ} (\x → ⊃LA {x}) B)
    ⊃LA {δ} {γ} {a} {b} (Σ {a'} A B) = 
      Σ (⊃LA {δ} A) 
-       (wkA (sub-append-ra {δ}) 
-            (⊃LA {δ ++ [ a' ]} (wkA (sub-ra-append {δ}) B)))
+       (wkA-append-ra {δ} (\x → ⊃LA {x}) B)
+
   
    ∧L₁A : ∀{δ γ a b c} 
       → Type (δ ⟩⟩ (a :: γ)) c 
       → Type (δ ⟩⟩ ((a ∧ b) :: γ)) c 
    ∧L₁A {δ} (c · K [ σ ]) = c · K [ ∧L₁σ {δ} σ ]
-   ∧L₁A {δ} (Π A B) = Π (∧L₁A {δ} A) (∧L₁A B)
-   ∧L₁A {δ} (Σ A B) = Σ (∧L₁A {δ} A) (∧L₁A B) 
+   ∧L₁A {δ} (Π {a'} A B) =
+     Π (∧L₁A {δ} A)
+       (wkA-append-ra {δ} (\x → ∧L₁A {x}) B)
+   ∧L₁A {δ} (Σ {a'} A B) =
+     Σ (∧L₁A {δ} A)
+       (wkA-append-ra {δ} (\x → ∧L₁A {x}) B)
 
 
    data Kind (γ : Ctx) : Class → Set where
@@ -107,7 +123,17 @@ module TYPES (sig : String → Maybe Class) where
       → PCtx (δ ⟩⟩ (b :: a :: γ)) δ'
       → PCtx (δ ⟩⟩ (a :: (a ⊃ b) :: γ)) δ'
    ⊃LΔ ⟨⟩ = ⟨⟩
-   ⊃LΔ (A , Δ) = ⊃LA A , {!Δ!}
+   ⊃LΔ {δ} (_,_ {a'} A Δ) = 
+     ⊃LA {δ} A , (wkΔ (sub-append-ra {δ}) 
+                      (⊃LΔ {δ ++ [ a' ]} (wkΔ (sub-ra-append {δ}) Δ)))
+
+   ∧L₁Δ : ∀{δ γ a b δ'} 
+      → PCtx (δ ⟩⟩ (a :: γ)) δ'
+      → PCtx (δ ⟩⟩ ((a ∧ b) :: γ)) δ'
+   ∧L₁Δ ⟨⟩ = ⟨⟩
+   ∧L₁Δ {δ} (_,_ {a'} A Δ) = 
+     ∧L₁A {δ} A , (wkΔ (sub-append-ra {δ}) 
+                      (∧L₁Δ {δ ++ [ a' ]} (wkΔ (sub-ra-append {δ}) Δ)))
 
    _//_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
    Γ // ⟨⟩ = Γ
@@ -193,7 +219,7 @@ module DEPENDENT
             {B : Type (a :: γ) b}
             {C : Type (δ ⟩⟩ (b :: a :: γ)) c}
             → (Γ , A) / B / Δ ⊩ K ∶ C
-            → Γ / Π A B / wkA sub-wken A , {! Δ!} ⊩ (· K) ∶ ⊃LA {δ} C
+            → Γ / Π A B / wkA sub-wken A , ⊃LΔ {[]} Δ ⊩ (· K) ∶ ⊃LA {δ} C
          π₁ : ∀{a δ b c}
             {A : Type γ a}
             {Δ : PCtx (a :: γ) δ}
@@ -201,7 +227,7 @@ module DEPENDENT
             {B : Type (a :: γ) b}
             {C : Type (δ ⟩⟩ (a :: γ)) c}
             → Γ / A / Δ ⊩ K ∶ C
-            → Γ / Σ A B / {! ∧L₁Δ Δ!} ⊩ (π₁ K) ∶ {! ∧L₁A C!}
+            → Γ / Σ A B / ∧L₁Δ {[]} Δ ⊩ (π₁ K) ∶ ∧L₁A {δ} C
          π₂ : ∀{a δ b c}
             {A : Type γ a}
             {Δ : PCtx (b :: a :: γ) δ}
