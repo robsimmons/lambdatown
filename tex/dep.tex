@@ -1,4 +1,6 @@
 \documentclass{article}
+\usepackage{proof}
+\usepackage{amssymb}
 
 \begin{document}
 
@@ -55,5 +57,59 @@ by induction on the implicit type of the term $M$.
 \\
 \end{array}
 \]
+
+Arg: this is wrong: a variable can appear multiple times as long as it appears with a different spine.
+
+\section{Notes from March 15}
+
+We define pattern {\it terms} and pattern {\it substitutions} recursively.
+The big idea is that every ``free'' variable only occurs once, and that
+only ``bound'' variables are used (uniquely) in arguments. 
+
+This definition captures the idea but might be imperfect. We'll
+only define the operation of inverse substitution on pattern substitutions.
+
+\newcommand{\pat}{\mathsf{~pat}}
+
+\[
+\infer
+{\Gamma / \Gamma' \vdash \lambda x.N \pat}
+{\Gamma / (\Gamma', x) \vdash N \pat}
+\quad
+\infer
+{(\Gamma_1, \Gamma_2) / \Gamma' \vdash \langle N_1, N_2 \rangle \pat}
+{\Gamma_1 / \Gamma' \vdash N_1 \pat & \Gamma_2 / \Gamma' \vdash N_2 \pat}
+\quad
+\infer
+{\Gamma / \Gamma' \vdash x \cdot K [ \sigma ] \pat}
+{x \in \Gamma & \Gamma' \vdash \sigma' \pat}
+\]
+
+\[
+\infer
+{\Gamma \vdash \cdot \pat}{}
+\quad
+\infer
+{\Gamma_1, \Gamma_2 \vdash (N/x, \sigma) \pat}
+{\Gamma_1/ \cdot \vdash N \pat & \Gamma_2 \vdash \sigma \pat}
+\]
+
+Given a pattern substitution $\Gamma \vdash \sigma \pat$ 
+where $\Gamma \vdash \sigma : \Gamma'$, if 
+$x : A \in \Gamma$, we can define  a ``seek'' function that may fail
+but that, if it does not fail, returns a context $\Psi$, a $y : B \in \Gamma'$,
+a skeleton $\Psi \Vdash K : B > C$, and an invertible substitution 
+$\Psi \vdash \theta : \Delta$. 
+
+\subsection{Inverse substitution}
+
+\begin{itemize}
+\item $(u [\sigma']) [\sigma]^{\-1} \mapsto v[(\rho[\sigma'])[\sigma]^{-1}]$ instantiate a new $v$ with  a pruned
+substitution on $\sigma'$.
+\item $(\lambda x.N)[\sigma]^{-1} \mapsto \lambda x. (N[x/x,\sigma]^{-1}]$
+\item $(N_1, N_2)[\sigma]^{-1} \mapsto N_1 [\sigma]^{-1}, N_2 [\sigma]^{-1}$
+\item $(c \cdot K [\tau])[\sigma]^{-1} \mapsto c \cdot K [\tau[\sigma]^{-1}]$
+\item $(x \cdot K [\tau])[\sigma]^{-1} \mapsto y \cdot K' [ \theta^{-1} [\tau[\sigma]^{-1}]]$, where seeking for $x$ and $K$ gives us $\Psi$, $y$, $K'$, and $\theta$.
+\end{itemize}
 
 \end{document}
