@@ -10,6 +10,8 @@ data Type : Set where
    _∧_ : (A B : Type) → Type
    ○ : (A : Type) → Type
 
+{- Contexts -}
+
 Ctx = List Type
 
 open LIST.SET public hiding (refl)
@@ -18,6 +20,22 @@ _⊆_ = Sub
 
 sub++ : ∀{Γ} (Γ' : Ctx) → Γ ⊆ (Γ' ++ Γ)
 sub++ Γ' = sub-appendl _ Γ'
+
+{- Skeletons -}
+
+-- K : Skel Δ A C is the pattern judgment Δ ⊩ K : A > C
+data Skel : Ctx → Type → Type → Set where
+   ⟨⟩ : ∀{A} → Skel [] A A
+   ·_ : ∀{Δ₂ A B C}
+      (K : Skel Δ₂ B C)
+      → Skel (A :: Δ₂) (A ⊃ B) C
+   π₁ : ∀{Δ A B C}
+      (K : Skel Δ A C)
+      → Skel Δ (A ∧ B) C
+   π₂ : ∀{Δ A B C}
+      (K : Skel Δ B C)
+      → Skel Δ (A ∧ B) C
+
 
 module LAX (sig : String → Maybe Type) where
 
@@ -29,19 +47,6 @@ module LAX (sig : String → Maybe Type) where
          → Head Γ (valOf (sig c) {ch})
       var : ∀{A} (x : A ∈ Γ)
          → Head Γ A
-
-   -- K : Skel Δ A C is the pattern judgment Δ ⊩ K : A > C
-   data Skel : Ctx → Type → Type → Set where
-      ⟨⟩ : ∀{A} → Skel [] A A
-      ·_ : ∀{Δ₂ A B C}
-         (K : Skel Δ₂ B C)
-         → Skel (A :: Δ₂) (A ⊃ B) C
-      π₁ : ∀{Δ A B C}
-         (K : Skel Δ A C)
-         → Skel Δ (A ∧ B) C
-      π₂ : ∀{Δ A B C}
-         (K : Skel Δ B C)
-         → Skel Δ (A ∧ B) C
 
    infixr 21 _·_[_]
    mutual
