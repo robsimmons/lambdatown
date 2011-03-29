@@ -52,10 +52,14 @@ module MINIMAL (sig : String → Maybe Class) where
       -- σ : Subst Γ Δ is the derivation Γ ⊢ σ : Δ
       data Subst (Γ : Ctx) : Ctx → Set where
          ⟨⟩ : Subst Γ []
-         _,_ : ∀{A Δ}
+         n_,_ : ∀{A Δ}
             (N : Term Γ A) 
             (σ : Subst Γ Δ)
             → Subst Γ (A :: Δ) 
+         r_,_ : ∀{A Δ}
+            (R : Neutral Γ A)
+            (σ : Subst Γ Δ)
+            → Subst Γ (A :: Δ)
 
       -- R : Neutral Γ A is a partial derivation used in substitutions
       data Neutral (Γ : Ctx) : Class → Set where
@@ -78,8 +82,74 @@ module MINIMAL (sig : String → Maybe Class) where
             (N₂ : Term Γ B)
             → Term Γ (A ∧ B) 
 
+{-
+   {- PART 2: METRIC (TOTALLY NAMELESS REPRESENTATION -}
 
-   {- PART 2: GENERALIZED WEAKENING (a.k.a. renaming, context renaming) -}
+   -- Totally nameless terms
+   data trm : Set where
+      con : (s : List trm) → trm
+      Λ : (n : trm) → trm
+      _,_ : (n₁ n₂ : trm) → trm
+
+   -- Terms with the metric
+   mutual
+      data Subst' (Γ : Ctx) : List trm → Ctx → Set where
+         ⟨⟩ : Subst' Γ [] []
+         _,_ : ∀{A Δ n s}
+            (N : Term' Γ n A) 
+            (σ : Subst' Γ s Δ)
+            → Subst' Γ (n :: s) (A :: Δ) 
+
+      -- N : Term Γ A is the derivation Γ ⊢ N : A true
+      data Term' (Γ : Ctx) : trm → Class → Set where
+         _·_[_] : ∀{A Q Δ s}
+            (h : Head Γ A)
+            (K : Skel Δ A (con Q))
+            (σ : Subst' Γ s Δ)
+            → Term' Γ (con s) (con Q)
+         Λ : ∀{A B n}
+            (N : Term' (A :: Γ) n B)
+            → Term' Γ (Λ n) (A ⊃ B)
+         _,_ : ∀{A B n₁ n₂}
+            (N₁ : Term' Γ n₁ A)
+            (N₂ : Term' Γ n₂ B)
+            → Term' Γ (n₁ , n₂) (A ∧ B) 
+            
+   -- Metric erasure
+   mutual 
+      m→ : ∀{Γ n A} → Term' Γ n A → Term Γ A
+      m→ (h · K [ σ ]) = h · K [ mσ→ σ ]
+      m→ (Λ N) = Λ (m→ N)
+      m→ (N₁ , N₂) = m→ N₁ , m→ N₂ 
+
+      mσ→ : ∀{Γ s Δ} → Subst' Γ s Δ → Subst Γ Δ
+      mσ→ ⟨⟩ = ⟨⟩
+      mσ→ (N , σ) = m→ N , mσ→ σ
+
+   -- Metric calculation
+   mutual
+      mN : ∀{Γ A} → Term Γ A → trm
+      mN (h · K [ σ ]) = con (mσ σ)
+      mN (Λ N) = Λ (mN N)
+      mN (N₁ , N₂) = mN N₁ , mN N₂
+
+      mσ : ∀{Γ Δ} → Subst Γ Δ → List trm
+      mσ ⟨⟩ = []
+      mσ (N , σ) = mN N :: mσ σ
+
+   -- Metric addition 
+   mutual
+      →m : ∀{Γ A} (N : Term Γ A) → Term' Γ (mN N) A
+      →m (h · K [ σ ]) = h · K [ →mσ σ ]
+      →m (Λ N) = Λ (→m N)
+      →m (N₁ , N₂) = →m N₁ , →m N₂
+
+      →mσ : ∀{Γ Δ} (σ : Subst Γ Δ) → Subst' Γ (mσ σ) Δ
+      →mσ ⟨⟩ = ⟨⟩
+      →mσ (N , σ) = →m N , →mσ σ
+
+-}
+   {- PART 3: GENERALIZED WEAKENING (a.k.a. renaming, context renaming) -}
 
    mutual
       wkN : ∀{Γ Γ' A} → Γ ⊆ Γ' → Term Γ A → Term Γ' A
@@ -93,114 +163,63 @@ module MINIMAL (sig : String → Maybe Class) where
 
       wkσ : ∀{Γ Γ' Δ} → Γ ⊆ Γ' → Subst Γ Δ → Subst Γ' Δ
       wkσ θ ⟨⟩ = ⟨⟩
-      wkσ θ (N , σ) = wkN θ N , wkσ θ σ
+      wkσ θ (n N , σ) = n wkN θ N , wkσ θ σ
+      wkσ θ (r R , σ) = r wkR θ R , wkσ θ σ
 
+{-
+   wk : ∀{Γ Γ' A} → Γ ⊆ Γ' → Term Γ A → Term Γ' A
+   wk θ N = m→ (wk' θ (→m N))
 
-   {- PART 3: SUBSTITUTION -}
+   wkσ : ∀{Γ Γ' Δ} → Γ ⊆ Γ' → Subst Γ Δ → Subst Γ' Δ
+   wkσ θ σ = mσ→ (wkσ' θ (→mσ σ))
+-}
 
-   -- Reversal-append
-   _⟩⟩_ : Ctx → Ctx → Ctx  
-   [] ⟩⟩ γ = γ
-   (a :: δ) ⟩⟩ γ = δ ⟩⟩ (a :: γ)
+   {- PART 4: SUBSTITUTION -}
 
-   -- Pull a term out of a substitution
-   σ→ : ∀{Γ Δ A} → A ∈ Δ → Subst Γ Δ → Term Γ A
-   σ→ () ⟨⟩
-   σ→ Z (N , σ) = N
-   σ→ (S x) (N , σ) = σ→ x σ
-
-   -- Check to see where a variable lives in the context
-   Γ? : ∀{Γ Δ B} (Γ' : Ctx)
-      → Subst Γ Δ 
-      → B ∈ Γ' ++ Δ ⟩⟩ Γ 
-      → (B ∈ Δ) + (B ∈ Γ' ++ Γ)
-   Γ? [] ⟨⟩ x = Inr x
-   Γ? [] (M , σ) x with Γ? [] (wkσ sub-wken σ) x
-   ... | Inl y = Inl (S y) 
-   ... | Inr Z = Inl Z
-   ... | Inr (S y) = Inr y
-   Γ? (B :: Γ') σ Z = Inr Z
-   Γ? (_ :: Γ') σ (S x) with Γ? Γ' σ x 
-   ... | Inl y = Inl y
-   ... | Inr y = Inr (S y) 
-
-   -- Single substitution
    mutual
-      sbN : ∀{Γ A C} (Γ' : Ctx) 
-         → Term (Γ' ++ Γ) A 
-         → Term (Γ' ++ A :: Γ) C 
-         → Term (Γ' ++ Γ) C
-      sbN Γ' M (· R) = sbR Γ' (wkN sub-wken M) R
-      sbN Γ' M (Λ N) = Λ (sbN (_ :: Γ') M N)
-      sbN Γ' M (N₁ , N₂) = sbN Γ' M N₁ , sbN Γ' M N₂
+      sbN : ∀{Γ Γ' C} → Subst Γ Γ' → Term Γ' C → Term Γ C
+      sbN τ (· R) = {!!}
+      sbN τ (Λ N) = {!!}
+      sbN τ (N₁ , N₂) = {!!}
 
-      sbR : ∀{Γ A Q} (Γ' : Ctx)
-         → Term Γ A 
-         → Neutral (Γ' ++ A :: Γ) (con Q) 
-         → Term (Γ' ++ Γ) (con Q)
-      sbR Γ' M (var x · K [ σ ]) with Γ? Γ' (M , ⟨⟩) x
-      ... | Inl Z = wkN (sub-appendl _ Γ') M • K [ sbσ Γ' M σ ]
-      ... | Inl (S ())
-      ... | Inr y = · var y · K [ sbσ Γ' M σ ]
-      sbR Γ' M (con c · K [ σ ]) = · con c · K [ sbσ Γ' M σ ]
+      sbR : ∀{Γ Γ' C} → Subst Γ Γ' → Neutral Γ' C → Neutral Γ C
+      sbR τ (var x · K [ σ ]) = {!!}
+      sbR τ (con c · K [ σ ]) = con c · K [ sbσ τ σ ] 
 
-      sbσ : ∀{Γ A Δ} (Γ' : Ctx)
-         → Term Γ A 
-         → Subst (Γ' ++ A :: Γ) Δ 
-         → Subst (Γ' ++ Γ) Δ
-      sbσ Γ' M ⟨⟩ = ⟨⟩
-      sbσ Γ' M (N , σ) = sbN Γ' M N , sbσ Γ' M σ
+      sbσ : ∀{Γ Γ' Δ} → Subst Γ Γ' → Subst Γ' Δ → Subst Γ Δ
+      sbσ τ ⟨⟩ = ⟨⟩
+      sbσ τ (n N , σ) = n sbN τ N , sbσ τ σ
+      sbσ τ (r R , σ) = r sbR τ R , sbσ τ σ
 
-      _•_[_] : ∀{Γ Δ A C} → Term Γ A → Skel Δ A C → Subst Γ Δ → Term Γ C
-      M • ⟨⟩ [ ⟨⟩ ] = M
-      Λ M • · K [ N , σ ] = sbN [] N M • K [ σ ]
-      (M₁ , M₂) • π₁ K [ σ ] = M₁ • K [ σ ]
-      (M₁ , M₂) • π₂ K [ σ ] = M₂ • K [ σ ]
 
-   subN : ∀{Γ A C} → Term Γ A → Term (A :: Γ) C → Term Γ C
-   subN = sbN []
-
-   subR : ∀{Γ A Q} → Term Γ A → Neutral (A :: Γ) (con Q) → Term Γ (con Q)
-   subR = sbR []
-
-   subσ : ∀{Γ A Δ} → Term Γ A → Subst (A :: Γ) Δ → Subst Γ Δ
-   subσ = sbσ []
-
-   -- Simultaneous substitution
+{-
    mutual
-      ssbN : ∀{Δ Γ A} (Γ' : Ctx) 
-         → Subst Γ Δ 
-         → Term (Γ' ++ Δ ⟩⟩ Γ) A 
-         → Term (Γ' ++ Γ) A
-      ssbN Γ' τ (· R) = ssbR Γ' τ R
-      ssbN Γ' τ (Λ N) = Λ (ssbN (_ :: Γ') τ N)
-      ssbN Γ' τ (N₁ , N₂) = ssbN Γ' τ N₁ , ssbN Γ' τ N₂
+      subN : ∀{Γ A C n} 
+         → Term Γ A 
+         → Term' (A :: Γ) n C 
+         → Term Γ C
+      subN M (Λ N) = Λ (subN (wk sub-wken M) (wk' sub-exch N))
+      subN M (N₁ , N₂) = subN M N₁ , subN M N₂
+      subN M (var (S x) · K [ σ ]) = var x · K [ subσ M σ ]
+      subN M (con c · K [ σ ]) = con c · K [ subσ M σ ]
+      subN M (var Z · K [ σ ]) = M • K [ subσ M σ ]
 
-      ssbR : ∀{Δ Γ Q} (Γ' : Ctx)
+      _•_[_] : ∀{Γ Δ A C}
+         → Term Γ A 
+         → Skel Δ A C
          → Subst Γ Δ
-         → Neutral (Γ' ++ Δ ⟩⟩ Γ) (con Q) 
-         → Term (Γ' ++ Γ) (con Q)
-      ssbR Γ' τ (var x · K [ σ ]) with Γ? Γ' τ x
-      ... | Inl y = wkN (sub-appendl _ Γ') (σ→ y τ) • K [ ssbσ Γ' τ σ ]
-      ... | Inr y = · var y · K [ ssbσ Γ' τ σ ]
-      ssbR Γ' τ (con c · K [ σ ]) = · con c · K [ ssbσ Γ' τ σ ]
+         → Term Γ C
+      M • ⟨⟩ [ σ ] = M
+      Λ M • (· K) [ N , σ ] = (subN N (→m M)) • K [ σ ] 
+      (M₁ , M₂) • (π₁ K) [ σ ] = M₁ • K [ σ ]
+      (M₁ , M₂) • (π₂ K) [ σ ] = M₂ • K [ σ ]
 
-      ssbσ : ∀{Δ Γ Δ'} (Γ' : Ctx) 
+      subσ : ∀{Γ Δ A s} 
+         → Term Γ A 
+         → Subst' (A :: Γ) s Δ
          → Subst Γ Δ
-         → Subst (Γ' ++ (Δ ⟩⟩ Γ)) Δ' 
-         → Subst (Γ' ++ Γ) Δ'
-      ssbσ Γ' τ ⟨⟩ = ⟨⟩
-      ssbσ Γ' τ (N , σ) = ssbN Γ' τ N , ssbσ Γ' τ σ
-
-
-   ssubN : ∀{Γ Δ C} → Subst Γ Δ → Term (Δ ⟩⟩ Γ) C → Term Γ C
-   ssubN = ssbN []
-
-   ssubR : ∀{Γ Δ Q} → Subst Γ Δ → Neutral (Δ ⟩⟩ Γ) (con Q) → Term Γ (con Q)
-   ssubR = ssbR []
-
-   ssubσ : ∀{Γ Δ Δ'} → Subst Γ Δ → Subst (Δ ⟩⟩ Γ) Δ' → Subst Γ Δ'
-   ssubσ = ssbσ []
+      subσ M ⟨⟩ = ⟨⟩
+      subσ M (N , σ) = subN M N , subσ M σ
 
 
    {- PART 5: ETA-EXPANSION -}
@@ -234,7 +253,7 @@ module MINIMAL (sig : String → Maybe Class) where
       → Skel Δ A B
       → Subst Γ Δ
       → Term Γ B
-   eta (con Q) h K σ = · h · K [ σ ]
+   eta (con Q) h K σ = h · K [ σ ]
    eta (A ⊃ B) (con c) K σ = 
       Λ (eta B (con c) (·' K) (eta _ (var Z) ⟨⟩ ⟨⟩ ,' wkσ sub-wken σ) )
    eta (A ⊃ B) (var x) K σ = 
@@ -247,10 +266,17 @@ module MINIMAL (sig : String → Maybe Class) where
    η' : ∀{Γ A} → A ∈ Γ → Term Γ A
    η' x = eta _ (var x) ⟨⟩ ⟨⟩ 
 
-
    {- PART 6: APPLYING AND COMPOSING SUBSTITUTIONS -} 
 
+   σ→ : ∀{Γ Δ A} → A ∈ Δ → Subst Γ Δ → Term Γ A
+   σ→ () ⟨⟩
+   σ→ Z (N , σ) = N
+   σ→ (S x) (N , σ) = σ→ x σ
+
    -- XXX add to stdlib
+   _⟩⟩_ : Ctx → Ctx → Ctx  
+   [] ⟩⟩ γ = γ
+   (a :: δ) ⟩⟩ γ = δ ⟩⟩ (a :: γ)
 
    sub-⟩⟩-l : ∀{δ γ} → γ ⊆ (δ ⟩⟩ γ)
    sub-⟩⟩-l {[]} n = n
@@ -285,26 +311,19 @@ module MINIMAL (sig : String → Maybe Class) where
    sub-ra-congr {[]} θ = θ
    sub-ra-congr {x :: xs} θ = sub-ra-congr {xs} (sub-cons-congr θ) 
 
-   -- The critical thing about Γs? is that it has a %reduces property,
-   -- namely that B is "smaller" than Δ in the left branch. 
-   -- Because Agda can't check this, this formulation won't termination check. 
-   Γs? : ∀{Γ Δ B} (Γ' : Ctx)
-      → Subst Γ Δ 
-      → B ∈ Γ' ++ Δ ⟩⟩ Γ 
-      → (B ∈ Δ) + (B ∈ Γ' ++ Γ)
-   Γs? [] ⟨⟩ x = Inr x
-   Γs? [] (M , σ) x with Γs? [] (wkσ sub-wken σ) x
-   ... | Inl y = Inl (S y) 
-   ... | Inr Z = Inl Z
-   ... | Inr (S y) = Inr y
-   Γs? (B :: Γ') σ Z = Inr Z
-   Γs? (_ :: Γ') σ (S x) with Γs? Γ' σ x 
-   ... | Inl y = Inl y
-   ... | Inr y = Inr (S y) 
+   mutual
+      ssubN : ∀{Δ Γ n A} → Subst Γ Δ → Term' (Δ ⟩⟩ Γ) n A → Term Γ A
+      ssubN τ (var x · K [ σ ]) = 
+         case (split-revappend _ x) 
+          (λ x' → σ→ x' τ • K [ ssubσ τ σ ]) 
+          (λ x' → var x' · K [ ssubσ τ σ ])
+      ssubN τ (con c · K [ σ ]) = con c · K [ ssubσ τ σ ]
+      ssubN {Δ} τ (Λ N) = Λ (ssubN (wkσ sub-wken τ) (wk' (sub-ra-exch {Δ}) N))
+      ssubN τ (N₁ , N₂) = (ssubN τ N₁) , (ssubN τ N₂)
 
-
-{-
-
+      ssubσ : ∀{Δ Γ s Δ'} → Subst Γ Δ → Subst' (Δ ⟩⟩ Γ) s Δ' → Subst Γ Δ'
+      ssubσ τ ⟨⟩ = ⟨⟩
+      ssubσ τ (N , σ) = ssubN τ N , ssubσ τ σ
 
    {- PART 7 : LEFT RULES -}
 

@@ -35,13 +35,11 @@ module TYPES (sig : String → Maybe Class) where
    subA M (Π A B) = Π (subA M A) (subA (wkN sub-wken M) (wkA sub-exch B))
    subA M (A ∧ B) = (subA M A) ∧ (subA M B)
 
-{-
    ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
-   ssubA τ (c · K [ σ' ])  = c · K [ ssubσ τ (→mσ σ') ]
+   ssubA τ (c · K [ σ ])  = c · K [ ssubσ τ σ ]
    ssubA {δ} τ (Π A B) = 
       Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
    ssubA {δ} τ (A ∧ B) = (ssubA τ A) ∧ (ssubA τ B)
--}
 
    data Kind (γ : Ctx) : Class → Set where
       typ : Kind γ (con typ)
@@ -183,18 +181,19 @@ module DEPENDENT
             → Γ ⊢ N₂ ∶ B ∶type
             → Γ ⊢ N₁ , N₂ ∶ A ∧ B ∶type
 
+{-
    mutual
-      typedsubN : ∀{γ n a c}
+      typedsubN : ∀{γ n a c} (γ' : Ctx)
          {Γ : DCtx γ}
          {A : Type γ a}
-         {C : Type (a :: γ) c}
+         {C : Type (γ' ++ a :: γ) c}
          {M : Term γ a}
-         {N : Term' (a :: γ) n c} 
+         (N : Term (γ' ++ a :: γ) n c)
          → Γ ⊢ M ∶ A ∶type
          → (Γ , A) ⊢ m→ N ∶ C ∶type
          → Γ ⊢ subN M N ∶ subA M C ∶type
 
-      typedsubN {N = N₁ , N₂} D (E₁ , E₂) = typedsubN D E₁ , typedsubN D E₂
+      typedsubN γ' {N = N₁ , N₂} D (E₁ , E₂) = typedsubN D E₁ , typedsubN D E₂
 
       typedsubN {c = c₁ ⊃ c₂} {A = A} {Π C₁ C₂} {M} {Λ N} D (Λ E) = 
          Λ (typedsubN {c = c₂} {A = wkA sub-wken A} {wkA sub-exch C₂} {wk sub-wken M} {wk' sub-exch N} {! weaken D!} {! E!})
@@ -247,3 +246,4 @@ module DEPENDENT
  
       typedred (DM₁ , DM₂) (π₁ DK) Dσ = typedred DM₁ DK Dσ
       typedred (DM₁ , DM₂) (π₂ DK) Dσ = typedred DM₂ DK Dσ
+-}
