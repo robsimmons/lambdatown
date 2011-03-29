@@ -17,7 +17,21 @@ open LIST.SET public hiding (refl)
 _⊆_ : Ctx → Ctx → Set
 _⊆_ = Sub
 
+{- Skeletons -}
 
+-- K : Skel Δ A C is the pattern judgment Δ ⊩ K : A > C
+data Skel : Ctx → Type → Type → Set where
+   ⟨⟩ : ∀{A} → Skel [] A A
+   ·_ : ∀{Δ₂ A B C}
+      (K : Skel Δ₂ B C)
+      → Skel (A :: Δ₂) (A ⊃ B) C
+   π₁ : ∀{Δ A B C}
+      (K : Skel Δ A C)
+      → Skel Δ (A ∧ B) C
+   π₂ : ∀{Δ A B C}
+      (K : Skel Δ B C)
+      → Skel Δ (A ∧ B) C
+   
 
 module MINIMAL (sig : String → Maybe Type) where
 
@@ -30,19 +44,6 @@ module MINIMAL (sig : String → Maybe Type) where
       con : (c : String) {ch : Check (isSome (sig c))}
          → Head Γ (valOf (sig c) {ch})
 
-   -- K : Skel Δ A C is the pattern judgment Δ ⊩ K : A > C
-   data Skel : Ctx → Type → Type → Set where
-      ⟨⟩ : ∀{A} → Skel [] A A
-      ·_ : ∀{Δ₂ A B C}
-         (K : Skel Δ₂ B C)
-         → Skel (A :: Δ₂) (A ⊃ B) C
-      π₁ : ∀{Δ A B C}
-         (K : Skel Δ A C)
-         → Skel Δ (A ∧ B) C
-      π₂ : ∀{Δ A B C}
-         (K : Skel Δ B C)
-         → Skel Δ (A ∧ B) C
-   
    infixr 21 _·_[_]
    mutual
       -- σ : Subst Γ Δ is the derivation Γ ⊢ σ : Δ
