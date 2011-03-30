@@ -153,6 +153,9 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    ... | Inl Refl = Inl refl
    ... | Inr y = Inr (S y) 
 
+   wkW : ∀ {Γ A} (Γ' : Ctx) → Value Γ (↓ A) → Term (Γ' ++ Γ) A
+   wkW Γ' (⁻ N) = wkN (sub++ Γ') N
+
    mutual
       sbN : ∀{J Γ C} (Γ' : Ctx)
          → Value Γ J
@@ -160,7 +163,7 @@ module LAX (sig : String → Maybe (Type ⁻)) where
          → Term (Γ' ++ Γ) C
       sbN Γ' W (· con c · K [ σ ]) = · con c · K [ sbσ Γ' W σ ]
       sbN Γ' W (· var x · K [ σ ]) with sbσ Γ' W σ | Γ? Γ' x 
-      sbN Γ' W (· var x · K [ σ ]) | σ' | Inl Refl = red⁻ {!W!} K σ'
+      ... | σ' | Inl Refl = red⁻ (wkW Γ' W) K σ'
       ... | σ' | Inr y = · var y · K [ sbσ Γ' W σ ]
       sbN Γ' W (○ E) = ○ (sbE Γ' W E)
       sbN Γ' W (Λ N) = Λ (sbN (_ :: Γ') W N)
@@ -200,15 +203,14 @@ module LAX (sig : String → Maybe (Type ⁻)) where
       sbE Γ' W (let○ (con c · K [ σ ]) E) = 
          let○ (con c · K [ sbσ Γ' W σ ]) (sbE (_ :: Γ') W E)
       sbE Γ' W (let○ (var x · K [ σ ]) E) with Γ? Γ' x
-      ... | Inl Refl = {!!} -- wkW Γ' W •⁺ K [ sbσ Γ' W σ ] sbE (_ :: Γ') W E
+      ... | Inl Refl =  wkW Γ' W •⁺ K [ sbσ Γ' W σ ] sbE (_ :: Γ') W E
       ... | Inr y = let○ (var y · K [ sbσ Γ' W σ ]) (sbE (_ :: Γ') W E)
 
-{-
       _•⁺_[_]_ : ∀{Γ Δ A B C} 
          → Term Γ A 
          → Skel Δ A (○ B)
          → Subst Γ Δ 
-         → Exp (Hyp B :: Γ) C
+         → Exp (B :: Γ) C
          → Exp Γ C
       · _ •⁺ () [ _ ] _
       ○ E •⁺ ⟨⟩ [ ⟨⟩ ] E' = leftist [] E E'
@@ -218,12 +220,12 @@ module LAX (sig : String → Maybe (Type ⁻)) where
 
       leftist : ∀{Γ B C} (Γ' : Ctx) 
          → Exp (Γ' ++ Γ) B
-         → Exp (Hyp B :: Γ) C 
+         → Exp (B :: Γ) C 
          → Exp (Γ' ++ Γ) C
       leftist Γ' ⟨ V ⟩ E' = sbE [] V (wkE (sub-cons-congr (sub++ Γ')) E')
       leftist Γ' (let○ R E) E' = let○ R (leftist (_ :: Γ') E E')
--}
 
+x : Set
 x = {!!}
 
 {-
