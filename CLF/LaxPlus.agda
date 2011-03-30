@@ -17,10 +17,6 @@ data Type : Polarity → Set where
 
 {- Contexts and inclusion in contexts -}
 
-data Jmt : Set where 
-   _true⁺ : String → Jmt
-   _true⁻ : Type ⁻ → Jmt
-
 Ctx = List (Type ⁺)
 
 open LIST.SET public hiding (refl)
@@ -31,11 +27,6 @@ sub++ : ∀{Γ} (Γ' : Ctx) → Γ ⊆ (Γ' ++ Γ)
 sub++ Γ' = sub-appendl _ Γ'
 
 {- Skeletons -}
-
--- Hypotheses are just degenerate positive skeletons Δ ⊩ A
-Hyp : Type ⁺ → Jmt
-Hyp (con Q) = Q true⁺
-Hyp (↓ A) = A true⁻
 
 -- K : Skel Δ A C is the pattern judgment Δ ⊩ K : A > C
 data Skel : Ctx → Type ⁻ → Type ⁻ → Set where
