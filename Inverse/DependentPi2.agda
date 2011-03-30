@@ -215,6 +215,32 @@ module DEPENDENT
    sbΓ [] τ ⟨⟩ = ⟨⟩
    sbΓ (_ :: γ') τ (Γ , A) = sbΓ γ' τ Γ , sbA γ' τ A
 
+   typedsubK : ∀{γ γ' δ δ' a c}
+      {Γ : DCtx γ}
+      {Δ : PCtx γ δ}
+      (Γ' : HCtx (δ ⟩⟩ γ) γ')
+      {A : Type (γ' ++ δ ⟩⟩ γ) a}
+      {Δ' : PCtx (γ' ++ δ ⟩⟩ γ) δ'}
+      {τ : Subst γ δ}
+      {K : Skel δ' a c}
+      {C : Type (δ' ⟩⟩ (γ' ++ δ ⟩⟩ γ)) c}
+      {C' : Type (δ' ⟩⟩ (γ' ++ γ)) c}
+      → ((Γ ,⟨⟨ Δ) ,++ Γ') / A / Δ' ⊩ K ∶ C
+      → (Γ ,++ sbΓ γ' τ Γ') / sbA γ' τ A / sbΔ γ' τ Δ' ⊩ K ∶ C'
+   typedsubK Γ' ⟨⟩ = {!!}
+   typedsubK Γ' (· y) = {!!}
+   typedsubK Γ' (π₁ y) = {!!}
+   typedsubK Γ' (π₂ y) = {!!}
+
+   
+
+   equiv1 : ∀{γ δ δ' a} (γ' : Ctx)
+      {τ : Subst γ δ}
+      {A : Type (δ' ⟩⟩ (γ' ++ δ ⟩⟩ γ)) a}
+      {σ : Subst (γ' ++ δ ⟩⟩ γ) δ'}
+      → sbA γ' τ (subA σ A) ≡ subA (sbσ γ' τ σ) {! sbA (δ ⟩⟩ γ') τ A!}
+   equiv1 = {!!} 
+
    mutual
       typedsubN : ∀{γ c δ} {γ' : Ctx}
          {Γ : DCtx γ}
@@ -229,10 +255,12 @@ module DEPENDENT
 
       typedsubN {γ' = γ'} Γ' {τ = τ} D (var x · EK [ Eσ ] Refl) with Γ? γ' τ x 
       ... | Inl y = {! -- I am hereditary reduction -- !}
-      ... | Inr y = var y · {! EK, with stuff!} [ typedsubσ Γ' D Eσ Refl ] {!!}
+      ... | Inr y = var y · {! EK!} [ typedsubσ Γ' D Eσ Refl ] 
+           {! equiv1!}
 
       typedsubN Γ' D (con c · EK [ Eσ ] Refl) = 
-         con c · {! EK, with stuff!} [ typedsubσ Γ' D Eσ Refl ] {!!}
+         con c · {! EK, with stuff!} [ typedsubσ Γ' D Eσ Refl ] 
+           {! equiv1!}
 
       typedsubN Γ' D (Λ E) = Λ (typedsubN (Γ' , _) D E)
 
