@@ -333,3 +333,6 @@ module LAX (sig : String → Maybe Type) where
       let○ (var x) K σ' E [ σ ]E = 
          red⁺ (lookup x σ) K (σ' [ σ ]σ) (E [ η , wkσ sub-wken σ ]E) 
 
+
+x : Set
+x = ?
