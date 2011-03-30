@@ -3,9 +3,11 @@ open import Inverse.Minimal2
 
 module Inverse.DependentPi2 where
 
-open LIST.SET public
+open LIST.SET hiding (refl)
 
-open import Lib.List.In
+-- open import Lib.List.In 
+
+{- PART 1: TYPES, KINDS, CONTEXTS -}
 
 module TYPES (sig : String → Maybe Class) where
 
@@ -30,16 +32,17 @@ module TYPES (sig : String → Maybe Class) where
    wkA θ (Π A B) = Π (wkA θ A) (wkA (sub-cons-congr θ) B)
    wkA θ (A ∧ B) = (wkA θ A) ∧ (wkA θ B)
 
-   subA : ∀{γ a c} → Term γ a → Type (a :: γ) c → Type γ c
-   subA M (c · K [ σ ]) = c · K [ subσ M σ ]
-   subA M (Π A B) = Π (subA M A) (subA (wkN sub-wken M) (wkA sub-exch B))
-   subA M (A ∧ B) = (subA M A) ∧ (subA M B)
+   sbA : ∀{δ γ a} (γ' : Ctx)
+      → Subst γ δ 
+      → Type (γ' ++ δ ⟩⟩ γ) a 
+      → Type (γ' ++ γ) a
+   sbA γ' τ (c · K [ σ ]) = c · K [ sbσ γ' τ σ ]
+   sbA {δ} γ' τ (Π A B) = Π (sbA γ' τ A) (sbA (_ :: γ') τ B)
+   sbA {δ} γ' τ (A ∧ B) = (sbA γ' τ A) ∧ (sbA γ' τ B)
 
-   ssubA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
-   ssubA τ (c · K [ σ ])  = c · K [ ssubσ τ σ ]
-   ssubA {δ} τ (Π A B) = 
-      Π (ssubA τ A) (ssubA (wkσ sub-wken τ) (wkA (sub-ra-exch {δ}) B))
-   ssubA {δ} τ (A ∧ B) = (ssubA τ A) ∧ (ssubA τ B)
+   subA : ∀{δ γ a} → Subst γ δ → Type (δ ⟩⟩ γ) a → Type γ a
+   subA = sbA []
+
 
    data Kind (γ : Ctx) : Class → Set where
       typ : Kind γ (con typ)
@@ -66,9 +69,20 @@ module TYPES (sig : String → Maybe Class) where
    wkΔ θ ⟨⟩ = ⟨⟩
    wkΔ θ (A , Δ) = wkA θ A , wkΔ (sub-cons-congr θ) Δ
 
-   subΔ : ∀{γ a δ} → Term γ a → PCtx (a :: γ) δ → PCtx γ δ
-   subΔ M ⟨⟩ = ⟨⟩
-   subΔ M (A , Δ) = subA M A , subΔ (wkN sub-wken M) (wkΔ sub-exch Δ)
+   sbΔ : ∀{δ γ δ'} (γ' : Ctx) 
+      → Subst γ δ 
+      → PCtx (γ' ++ (δ ⟩⟩ γ)) δ' 
+      → PCtx (γ' ++ γ) δ'
+   sbΔ γ' τ ⟨⟩ = ⟨⟩
+   sbΔ γ' τ (A , Δ) = sbA γ' τ A , sbΔ (_ :: γ') τ Δ
+
+   subΔ : ∀{δ γ δ'} → Subst γ δ → PCtx (δ ⟩⟩ γ) δ' → PCtx γ δ'
+   subΔ = sbΔ []
+
+   _,⟨⟨_ : ∀{γ δ} → DCtx γ → PCtx γ δ → DCtx (δ ⟩⟩ γ)
+   Γ ,⟨⟨ ⟨⟩ = Γ
+   Γ ,⟨⟨ (A , Δ) = (Γ , A) ,⟨⟨ Δ
+
 
 
    data SigItem : Set where
@@ -84,8 +98,7 @@ module TYPES (sig : String → Maybe Class) where
    Γ→ Z (Γ , A) = wkA sub-wken A
    Γ→ (S x) (Γ , A) = wkA sub-wken (Γ→ x Γ)
 
-
-
+{- PART 2: DEPENDENT TYPES -}
 
 module DEPENDENT
   (sig : String → Maybe Class
@@ -98,7 +111,7 @@ module DEPENDENT
          → Head γ a 
          → Type γ a → Set where
       var : ∀{a}
-         {x : a ∈ γ}
+         (x : a ∈ γ)
          → Γ ⊢ var x ∶ Γ→ x Γ ∶head
       con : ∀{c ch}
          {A : Type [] (valOf (sig c) {ch})}
@@ -149,23 +162,25 @@ module DEPENDENT
             {σ : Subst γ δ}
             {Δ : PCtx (a :: γ) δ}
             → Γ ⊢ N ∶ A ∶type
-            → Γ ⊢ σ ∶ subΔ N Δ ∶ctx
+            → Γ ⊢ σ ∶ subΔ (N , ⟨⟩) Δ ∶ctx
             → Γ ⊢ N , σ ∶ A , Δ ∶ctx
 
       data _⊢_∶_∶type {γ : _} (Γ : DCtx γ) : ∀{a} 
             → Term γ a
             → Type γ a → Set where
-         _·_[_] : ∀{δ a q}
+         _·_[_]_ : ∀{δ a q}
             {Δ : PCtx γ δ}
             {A : Type γ a}
             {h : Head γ a}
             {K : Skel δ a (con (atm q))}
             {C : Type (δ ⟩⟩ γ) (con (atm q))}
+            {C' : Type γ (con (atm q))}
             {σ : Subst γ δ}
             → Γ ⊢ h ∶ A ∶head
             → Γ / A / Δ ⊩ K ∶ C
             → Γ ⊢ σ ∶ Δ ∶ctx
-            → Γ ⊢ h · K [ σ ] ∶ ssubA σ C ∶type
+            → C' ≡ subA σ C
+            → Γ ⊢ · h · K [ σ ] ∶ C' ∶type
          Λ : ∀{a b}
             {A : Type γ a}
             {B : Type (a :: γ) b}
@@ -181,17 +196,66 @@ module DEPENDENT
             → Γ ⊢ N₂ ∶ B ∶type
             → Γ ⊢ N₁ , N₂ ∶ A ∧ B ∶type
 
-{-
+
+   data HCtx (γ : Ctx) : Ctx → Set where 
+      ⟨⟩ : HCtx γ []
+      _,_ : ∀{γ' a} 
+         (Γ : HCtx γ γ') 
+         (A : Type (γ' ++ γ) a) 
+         → HCtx γ (a :: γ')
+  
+   _,++_ : ∀{γ γ'} → DCtx γ → HCtx γ γ' → DCtx (γ' ++ γ)
+   Γ ,++ ⟨⟩ = Γ
+   Γ ,++ (Γ' , A) = (Γ ,++ Γ') , A
+
+   sbΓ : ∀{δ γ} (γ' : Ctx)
+      → Subst γ δ 
+      → HCtx (δ ⟩⟩ γ) γ'
+      → HCtx γ γ'
+   sbΓ [] τ ⟨⟩ = ⟨⟩
+   sbΓ (_ :: γ') τ (Γ , A) = sbΓ γ' τ Γ , sbA γ' τ A
+
    mutual
-      typedsubN : ∀{γ n a c} (γ' : Ctx)
+      typedsubN : ∀{γ c δ} {γ' : Ctx}
          {Γ : DCtx γ}
-         {A : Type γ a}
-         {C : Type (γ' ++ a :: γ) c}
-         {M : Term γ a}
-         (N : Term (γ' ++ a :: γ) n c)
-         → Γ ⊢ M ∶ A ∶type
-         → (Γ , A) ⊢ m→ N ∶ C ∶type
-         → Γ ⊢ subN M N ∶ subA M C ∶type
+         (Γ' : HCtx (δ ⟩⟩ γ) γ')
+         {Δ : PCtx γ δ}
+         {C : Type (γ' ++ δ ⟩⟩ γ) c}
+         {τ : Subst γ δ}
+         {N : Term (γ' ++ δ ⟩⟩ γ) c}
+         → Γ ⊢ τ ∶ Δ ∶ctx
+         → ((Γ ,⟨⟨ Δ) ,++ Γ') ⊢ N ∶ C ∶type
+         → (Γ ,++ sbΓ γ' τ Γ') ⊢ sbN γ' τ N ∶ sbA γ' τ C ∶type
+
+      typedsubN {γ' = γ'} Γ' {τ = τ} D (var x · EK [ Eσ ] Refl) with Γ? γ' τ x 
+      ... | Inl y = {! -- I am hereditary reduction -- !}
+      ... | Inr y = var y · {! EK, with stuff!} [ typedsubσ Γ' D Eσ Refl ] {!!}
+
+      typedsubN Γ' D (con c · EK [ Eσ ] Refl) = 
+         con c · {! EK, with stuff!} [ typedsubσ Γ' D Eσ Refl ] {!!}
+
+      typedsubN Γ' D (Λ E) = Λ (typedsubN (Γ' , _) D E)
+
+      typedsubN Γ' D (E₁ , E₂) = typedsubN Γ' D E₁ , typedsubN Γ' D E₂
+ 
+
+      typedsubσ : ∀{γ δ δ'} {γ' : Ctx}
+         {Γ : DCtx γ}
+         (Γ' : HCtx (δ ⟩⟩ γ) γ')
+         {Δ : PCtx γ δ}
+         {Δ' : PCtx (γ' ++ δ ⟩⟩ γ) δ'}
+         {τ : Subst γ δ}
+         {σ : Subst (γ' ++ δ ⟩⟩ γ) δ'}
+         → Γ ⊢ τ ∶ Δ ∶ctx
+         → ((Γ ,⟨⟨ Δ) ,++ Γ') ⊢ σ ∶ Δ' ∶ctx
+         → {Δ'' : _} → Δ'' ≡ sbΔ γ' τ Δ' 
+         → (Γ ,++ sbΓ γ' τ Γ') ⊢ sbσ γ' τ σ ∶ Δ'' ∶ctx
+      typedsubσ Γ' D ⟨⟩ Refl = ⟨⟩
+      typedsubσ {γ' = γ'} Γ' {τ = τ} D (EN , Eσ) Refl = typedsubN Γ' D EN , typedsubσ Γ' D Eσ {! 
+   subΔ (sbN γ' τ N) (sbΔ (_ :: γ') τ Δ') ≡ sbΔ γ' τ (subΔ N Δ')
+!} 
+
+{-
 
       typedsubN γ' {N = N₁ , N₂} D (E₁ , E₂) = typedsubN D E₁ , typedsubN D E₂
 

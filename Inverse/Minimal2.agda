@@ -1,3 +1,6 @@
+-- This prevents us from needng to define hereditary substitution twice over
+{-# OPTIONS --no-termination-check #-}
+
 open import Prelude 
 
 module Inverse.Minimal2 where
@@ -21,7 +24,7 @@ open LIST.SET public
 _⊆_ : Ctx → Ctx → Set
 _⊆_ = Sub
 
-open import Lib.List.In
+-- open import Lib.List.In
 
 module MINIMAL (sig : String → Maybe Class) where
 
@@ -124,83 +127,48 @@ module MINIMAL (sig : String → Maybe Class) where
    ... | Inl y = Inl y
    ... | Inr y = Inr (S y) 
 
-   -- Single substitution
-   mutual
-      sbN : ∀{Γ A C} (Γ' : Ctx) 
-         → Term (Γ' ++ Γ) A 
-         → Term (Γ' ++ A :: Γ) C 
-         → Term (Γ' ++ Γ) C
-      sbN Γ' M (· R) = sbR Γ' (wkN sub-wken M) R
-      sbN Γ' M (Λ N) = Λ (sbN (_ :: Γ') M N)
-      sbN Γ' M (N₁ , N₂) = sbN Γ' M N₁ , sbN Γ' M N₂
-
-      sbR : ∀{Γ A Q} (Γ' : Ctx)
-         → Term Γ A 
-         → Neutral (Γ' ++ A :: Γ) (con Q) 
-         → Term (Γ' ++ Γ) (con Q)
-      sbR Γ' M (var x · K [ σ ]) with Γ? Γ' (M , ⟨⟩) x
-      ... | Inl Z = wkN (sub-appendl _ Γ') M • K [ sbσ Γ' M σ ]
-      ... | Inl (S ())
-      ... | Inr y = · var y · K [ sbσ Γ' M σ ]
-      sbR Γ' M (con c · K [ σ ]) = · con c · K [ sbσ Γ' M σ ]
-
-      sbσ : ∀{Γ A Δ} (Γ' : Ctx)
-         → Term Γ A 
-         → Subst (Γ' ++ A :: Γ) Δ 
-         → Subst (Γ' ++ Γ) Δ
-      sbσ Γ' M ⟨⟩ = ⟨⟩
-      sbσ Γ' M (N , σ) = sbN Γ' M N , sbσ Γ' M σ
-
-      _•_[_] : ∀{Γ Δ A C} → Term Γ A → Skel Δ A C → Subst Γ Δ → Term Γ C
-      M • ⟨⟩ [ ⟨⟩ ] = M
-      Λ M • · K [ N , σ ] = sbN [] N M • K [ σ ]
-      (M₁ , M₂) • π₁ K [ σ ] = M₁ • K [ σ ]
-      (M₁ , M₂) • π₂ K [ σ ] = M₂ • K [ σ ]
-
-   subN : ∀{Γ A C} → Term Γ A → Term (A :: Γ) C → Term Γ C
-   subN = sbN []
-
-   subR : ∀{Γ A Q} → Term Γ A → Neutral (A :: Γ) (con Q) → Term Γ (con Q)
-   subR = sbR []
-
-   subσ : ∀{Γ A Δ} → Term Γ A → Subst (A :: Γ) Δ → Subst Γ Δ
-   subσ = sbσ []
 
    -- Simultaneous substitution
    mutual
-      ssbN : ∀{Δ Γ A} (Γ' : Ctx) 
+      sbN : ∀{Δ Γ A} (Γ' : Ctx) 
          → Subst Γ Δ 
          → Term (Γ' ++ Δ ⟩⟩ Γ) A 
          → Term (Γ' ++ Γ) A
-      ssbN Γ' τ (· R) = ssbR Γ' τ R
-      ssbN Γ' τ (Λ N) = Λ (ssbN (_ :: Γ') τ N)
-      ssbN Γ' τ (N₁ , N₂) = ssbN Γ' τ N₁ , ssbN Γ' τ N₂
+      sbN Γ' τ (· R) = sbR Γ' τ R
+      sbN Γ' τ (Λ N) = Λ (sbN (_ :: Γ') τ N)
+      sbN Γ' τ (N₁ , N₂) = sbN Γ' τ N₁ , sbN Γ' τ N₂
 
-      ssbR : ∀{Δ Γ Q} (Γ' : Ctx)
+      sbR : ∀{Δ Γ Q} (Γ' : Ctx)
          → Subst Γ Δ
          → Neutral (Γ' ++ Δ ⟩⟩ Γ) (con Q) 
          → Term (Γ' ++ Γ) (con Q)
-      ssbR Γ' τ (var x · K [ σ ]) with Γ? Γ' τ x
-      ... | Inl y = wkN (sub-appendl _ Γ') (σ→ y τ) • K [ ssbσ Γ' τ σ ]
-      ... | Inr y = · var y · K [ ssbσ Γ' τ σ ]
-      ssbR Γ' τ (con c · K [ σ ]) = · con c · K [ ssbσ Γ' τ σ ]
+      sbR Γ' τ (var x · K [ σ ]) with Γ? Γ' τ x
+      ... | Inl y = wkN (sub-appendl _ Γ') (σ→ y τ) • K [ sbσ Γ' τ σ ]
+      ... | Inr y = · var y · K [ sbσ Γ' τ σ ]
+      sbR Γ' τ (con c · K [ σ ]) = · con c · K [ sbσ Γ' τ σ ]
 
-      ssbσ : ∀{Δ Γ Δ'} (Γ' : Ctx) 
+      sbσ : ∀{Δ Γ Δ'} (Γ' : Ctx) 
          → Subst Γ Δ
          → Subst (Γ' ++ (Δ ⟩⟩ Γ)) Δ' 
          → Subst (Γ' ++ Γ) Δ'
-      ssbσ Γ' τ ⟨⟩ = ⟨⟩
-      ssbσ Γ' τ (N , σ) = ssbN Γ' τ N , ssbσ Γ' τ σ
+      sbσ Γ' τ ⟨⟩ = ⟨⟩
+      sbσ Γ' τ (N , σ) = sbN Γ' τ N , sbσ Γ' τ σ
+
+      _•_[_] : ∀{Γ Δ A C} → Term Γ A → Skel Δ A C → Subst Γ Δ → Term Γ C
+      M • ⟨⟩ [ ⟨⟩ ] = M
+      Λ M • · K [ N , σ ] = sbN [] (N , ⟨⟩) M • K [ σ ]
+      (M₁ , M₂) • π₁ K [ σ ] = M₁ • K [ σ ]
+      (M₁ , M₂) • π₂ K [ σ ] = M₂ • K [ σ ]
 
 
-   ssubN : ∀{Γ Δ C} → Subst Γ Δ → Term (Δ ⟩⟩ Γ) C → Term Γ C
-   ssubN = ssbN []
+   subN : ∀{Γ Δ C} → Subst Γ Δ → Term (Δ ⟩⟩ Γ) C → Term Γ C
+   subN = sbN []
 
-   ssubR : ∀{Γ Δ Q} → Subst Γ Δ → Neutral (Δ ⟩⟩ Γ) (con Q) → Term Γ (con Q)
-   ssubR = ssbR []
+   subR : ∀{Γ Δ Q} → Subst Γ Δ → Neutral (Δ ⟩⟩ Γ) (con Q) → Term Γ (con Q)
+   subR = sbR []
 
-   ssubσ : ∀{Γ Δ Δ'} → Subst Γ Δ → Subst (Δ ⟩⟩ Γ) Δ' → Subst Γ Δ'
-   ssubσ = ssbσ []
+   subσ : ∀{Γ Δ Δ'} → Subst Γ Δ → Subst (Δ ⟩⟩ Γ) Δ' → Subst Γ Δ'
+   subσ = sbσ []
 
 
    {- PART 5: ETA-EXPANSION -}
