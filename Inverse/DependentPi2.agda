@@ -242,6 +242,26 @@ module DEPENDENT
    equiv1 = {!!} 
 
    mutual
+
+      typedred : ∀{γ c δ a}
+         {Γ : DCtx γ}
+         {A : Type γ a}
+         {N : Term γ a}
+         {Δ : PCtx γ δ}
+         {K : Skel δ a c}
+         {C : Type (δ ⟩⟩ γ) c}
+         {σ : Subst γ δ}
+         → Γ ⊢ N ∶ A ∶type
+         → Γ / A / Δ ⊩ K ∶ C
+         → Γ ⊢ σ ∶ Δ ∶ctx
+         → Γ ⊢ N • K [ σ ] ∶ subA σ C ∶type
+      typedred DM ⟨⟩ ⟨⟩ = {! DM!} -- prove (subA ⟨⟩ A) ≡ A and use
+      typedred (Λ DM) (· DK) (DN , Dσ) = {!typedred ? ? Dσ!}
+--         typedred {!!} {! DK!} ?
+      typedred (DM , _) (π₁ y0) Dσ = {!!}
+      typedred (_ , DM) (π₂ y0) Dσ = {!!}
+
+
       typedsubN : ∀{γ c δ} {γ' : Ctx}
          {Γ : DCtx γ}
          (Γ' : HCtx (δ ⟩⟩ γ) γ')
@@ -254,7 +274,7 @@ module DEPENDENT
          → (Γ ,++ sbΓ γ' τ Γ') ⊢ sbN γ' τ N ∶ sbA γ' τ C ∶type
 
       typedsubN {γ' = γ'} Γ' {τ = τ} D (var x · EK [ Eσ ] Refl) with Γ? γ' τ x 
-      ... | Inl y = {! -- I am hereditary reduction -- !}
+      ... | Inl y = {! typedred!}
       ... | Inr y = var y · {! EK!} [ typedsubσ Γ' D Eσ Refl ] 
            {! equiv1!}
 
