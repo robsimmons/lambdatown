@@ -22,13 +22,13 @@ Ctx = List (Type ⁻)
 
 data Pat : Set where
    _⊗_ : (Δ₁ Δ₂ : Pat) → Pat
-   ·_ : (A : Type ⁺) → Pat 
+   ⟨_⟩ : (A : Type ⁺) → Pat 
    ⟨⟩ : Pat  
 
 data _∈p_ : Type ⁺ → Pat → Set where 
-   ⟨⟩ : ∀{A} → A ∈p · A
-   ⟨ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ ⊗ Δ')
-   ⟩ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ' ⊗ Δ)
+   ⟨⟩ : ∀{A} → A ∈p ⟨ A ⟩
+   ⟨_ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ ⊗ Δ')
+   ⟩_ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ' ⊗ Δ)
 
 open LIST.SET public hiding (refl)
 _⊆_ : Ctx → Ctx → Set
@@ -41,7 +41,7 @@ sub++ Γ' = sub-appendl _ Γ'
 
 -- K⁺ : Skel⁺ C A is just a (degenerate) positive skeleton Δ ⊩ A
 data Skel⁺ : Pat → Type ⁺ → Set where
-   ⟨⟩ : ∀{A} → Skel⁺ (· A) A
+   ⟨⟩ : ∀{A} → Skel⁺ (⟨ A ⟩) A
    inl : ∀{A B Δ} 
       (K : Skel⁺ Δ A) 
       → Skel⁺ Δ (A ∨ B)
@@ -65,10 +65,9 @@ data Skel⁻ : Pat → Type ⁻ → Type ⁻ → Set where
 
 ηPat : Pat → Set
 ηPat (Δ ⊗ Δ') = ηPat Δ × ηPat Δ'
-ηPat (· con Q) = Unit
-ηPat (· (A ∧ B)) = Void
-ηPat (· (A ∨ B)) = Void
-ηPat (· ↓ A) = Unit
+ηPat ⟨ A ∧ B ⟩ = Void
+ηPat ⟨ (A ∨ B) ⟩ = Void
+ηPat ⟨ ↓ A ⟩ = Unit
 ηPat ⟨⟩ = Unit
 
 {- [] = Unit
@@ -97,9 +96,9 @@ module LAX (sig : String → Maybe (Type ⁻)) where
       -- σ : Subst Γ Δ is the derivation Γ ⊢ σ : Δ
       data Subst (Γ : Ctx) : Pat → Set where
          ⟨⟩ : Subst Γ ⟨⟩
-         ·_ : ∀{A}
+         ⟨_⟩ : ∀{A}
             (N : Term Γ A) 
-            → Subst Γ (· ↓ A)
+            → Subst Γ ⟨ ↓ A ⟩
          _,_ : ∀{Δ₁ Δ₂}
             (σ₁ : Subst Γ Δ₁)
             (σ₂ : Subst Γ Δ₂)
@@ -153,7 +152,7 @@ module LAX (sig : String → Maybe (Type ⁻)) where
             
       -- E : InvExp Γ A C is the derivation Γ; A ⊢ N ÷ C lax
       data InvExp (Γ : Ctx) : Type ⁺ → Type ⁺ → Set where
-         · : ∀{A C}
+         ·_ : ∀{A C}
             (E : Exp (A :: Γ) C)
             → InvExp Γ (↓ A) C
          _∣_ : ∀{A B C}
@@ -171,8 +170,7 @@ module LAX (sig : String → Maybe (Type ⁻)) where
       wkN θ (○ E) = ○ (wkE θ E)
 
       wkIN : ∀{Γ Γ' A C} → Γ ⊆ Γ' → InvTerm Γ A C → InvTerm Γ' A C
-      wkIN θ (⁺ N) = ⁺ (wkN (sub-cons-congr θ) N)
-      wkIN θ (⁻ N) = ⁻ (wkN (sub-cons-congr θ) N)
+      wkIN θ (· N) = · (wkN (sub-cons-congr θ) N)
       wkIN θ (N₁ ∣ N₂) = wkIN θ N₁ ∣ wkIN θ N₂
 
       wkh : ∀{Γ Γ' A} → Γ ⊆ Γ' → Head Γ A → Head Γ' A
@@ -180,30 +178,34 @@ module LAX (sig : String → Maybe (Type ⁻)) where
       wkh θ (con c) = con c
 
       wkR : ∀{Γ Γ' A} → Γ ⊆ Γ' → Neutral Γ A → Neutral Γ' A
-      wkR θ (h · K [ σ ]) = wkh θ h · K [ wkσ θ σ ]
+      wkR θ (h · K [ σ ]) = wkh θ h · K [ wkσ θ σ ] 
 
       wkσ : ∀{Γ Γ' Δ} → Γ ⊆ Γ' → Subst Γ Δ → Subst Γ' Δ
       wkσ θ ⟨⟩ = ⟨⟩
-      wkσ θ (·⁻ N) = ·⁻ (wkN θ N)
-      wkσ θ (·⁺ x) = ·⁺ (θ x)
+      wkσ θ ⟨ N ⟩ = ⟨ wkN θ N ⟩
       wkσ θ (σ₁ , σ₂) = wkσ θ σ₁ , wkσ θ σ₂
 
       wkV : ∀{Γ Γ' J} → Γ ⊆ Γ' → Value Γ J → Value Γ' J
       wkV θ (K [ σ ]v) = K [ wkσ θ σ ]v
 
       wkE : ∀{Γ Γ' A} → Γ ⊆ Γ' → Exp Γ A → Exp Γ' A
-      wkE θ (· V) = · wkV θ V 
+      wkE θ (· V) = · wkV θ V
       wkE θ (let○ R E) = let○ (wkR θ R) (wkIE θ E)
 
       wkIE : ∀{Γ Γ' A C} → Γ ⊆ Γ' → InvExp Γ A C → InvExp Γ' A C
-      wkIE θ (⁺ E) = ⁺ (wkE (sub-cons-congr θ) E)
-      wkIE θ (⁻ E) = ⁻ (wkE (sub-cons-congr θ) E)
-      wkIE θ (E₁ ∣ E₂) = wkIE θ E₁ ∣ wkIE θ E₂
+      wkIE θ (· E) = · wkE (sub-cons-congr θ) E
+      wkIE θ (E₁ ∣ E₂) = wkIE θ E₁ ∣ wkIE θ E₂ 
 
    {- PART 3: SUBSTITUTION -}
 
    -- Chucking a fully eta-expanded pattern into the context
    _⟫_⟫_ : (Δ : Pat) (Γ : Ctx) → ηPat Δ → Ctx
+   (Δ₁ ⊗ Δ₂) ⟫ Γ ⟫ (p₁ , p₂) = Δ₂ ⟫ Δ₁ ⟫ Γ ⟫ p₁ ⟫ p₂
+   ⟨ A ∧ B ⟩ ⟫ Γ ⟫ ()
+   ⟨ A ∨ B ⟩ ⟫ Γ ⟫ ()
+   ⟨ ↓ A ⟩ ⟫ Γ ⟫ <> = A :: Γ
+   ⟨⟩ ⟫ Γ ⟫ <> = Γ 
+{-
    (Δ₁ ⊗ Δ₂) ⟫ Γ ⟫ (p₁ , p₂) = Δ₂ ⟫ Δ₁ ⟫ Γ ⟫ p₁ ⟫ p₂
    (· con Q) ⟫ Γ ⟫ <> = Q true⁺ :: Γ
    (· (A ∧ B)) ⟫ Γ ⟫ ()
@@ -514,5 +516,6 @@ x = {!!}
       let○ (var x) K σ' E [ σ ]E = 
          red⁺ (lookup x σ) K (σ' [ σ ]σ) (E [ η , wkσ sub-wken σ ]E) 
 
+-}
 -}
 -}
