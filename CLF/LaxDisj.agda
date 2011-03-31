@@ -205,14 +205,27 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    ⟨ A ∨ B ⟩ ⟫ Γ ⟫ ()
    ⟨ ↓ A ⟩ ⟫ Γ ⟫ <> = A :: Γ
    ⟨⟩ ⟫ Γ ⟫ <> = Γ 
-{-
-   (Δ₁ ⊗ Δ₂) ⟫ Γ ⟫ (p₁ , p₂) = Δ₂ ⟫ Δ₁ ⟫ Γ ⟫ p₁ ⟫ p₂
-   (· con Q) ⟫ Γ ⟫ <> = Q true⁺ :: Γ
-   (· (A ∧ B)) ⟫ Γ ⟫ ()
-   (· (A ∨ B)) ⟫ Γ ⟫ ()
-   (· ↓ A) ⟫ Γ ⟫ <> = A true⁻ :: Γ
-   ⟨⟩ ⟫ Γ ⟫ <> = Γ
 
+   -- Is a variable pointing to the part of the context being substituted for?
+   Γ? : ∀{Γ B} (Γ' : Ctx) (Δ : Pat) (p : ηPat Δ)
+      → B ∈ Γ' ++ Δ ⟫ Γ ⟫ p 
+      → (↓ B ∈p Δ) + (B ∈ Γ' ++ Γ)
+   Γ? [] (Δ₁ ⊗ Δ₂) (p₁ , p₂) x with Γ? [] Δ₂ p₂ x
+   ... | Inl y = Inl (⟩ y)
+   ... | Inr y with Γ? [] Δ₁ p₁ y
+   ... | Inl z = Inl (⟨ z)
+   ... | Inr z = Inr z
+   Γ? [] ⟨ A ∧ B' ⟩ () x
+   Γ? [] ⟨ A ∨ B' ⟩ () x
+   Γ? [] ⟨ ↓ A ⟩ p Z = Inl ⟨⟩
+   Γ? [] ⟨ ↓ A ⟩ p (S x) = Inr x
+   Γ? [] ⟨⟩ p x = Inr x
+   Γ? (A :: Γ') Δ p Z = Inr Z
+   Γ? (A :: Γ') Δ p (S x) with Γ? Γ' Δ p x 
+   ... | Inl y = Inl y
+   ... | Inr y = Inr (S y)
+
+{-
 {-
    [] ⟫ Γ ⟫ p = Γ
    (con Q :: Δ) ⟫ Γ ⟫ p = Δ ⟫ Q true⁺ :: Γ ⟫ p
@@ -220,10 +233,6 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    (A ∨ B :: Δ) ⟫ Γ ⟫ () -}
    
 
-   -- Is a variable pointing to the part of the context being substituted for?
-   Γ? : ∀{Γ B} (Γ' : Ctx) (Δ : Pat) (p : ηPat Δ)
-      → B ∈ Γ' ++ Δ ⟫ Γ ⟫ p 
-      → (↓ B ∈ ) + (B ∈ Γ' ++ Γ)
    Γ? [] Δ p c = {!!}
    Γ? (J :: Γ') Δ p Z = {!!}
    Γ? (J :: Γ') Δ p (S x) with Γ? Γ' Δ p x 
