@@ -19,16 +19,7 @@ data Type : Polarity → Set where
 {- Contexts and inclusion in contexts -}
 
 Ctx = List (Type ⁻)
-
-data Pat : Set where
-   _⊗_ : (Δ₁ Δ₂ : Pat) → Pat
-   ⟨_⟩ : (A : Type ⁺) → Pat 
-   ⟨⟩ : Pat  
-
-data _∈p_ : Type ⁺ → Pat → Set where 
-   ⟨⟩ : ∀{A} → A ∈p ⟨ A ⟩
-   ⟨_ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ ⊗ Δ')
-   ⟩_ : ∀{A Δ Δ'} (x : A ∈p Δ) → A ∈p (Δ' ⊗ Δ)
+Pat = List (Type ⁺)
 
 open LIST.SET public hiding (refl)
 _⊆_ : Ctx → Ctx → Set
@@ -41,7 +32,7 @@ sub++ Γ' = sub-appendl _ Γ'
 
 -- K⁺ : Skel⁺ C A is just a (degenerate) positive skeleton Δ ⊩ A
 data Skel⁺ : Pat → Type ⁺ → Set where
-   ⟨⟩ : ∀{A} → Skel⁺ (⟨ A ⟩) A
+   ⟨⟩ : ∀{A} → Skel⁺ [ A ] A
    inl : ∀{A B Δ} 
       (K : Skel⁺ Δ A) 
       → Skel⁺ Δ (A ∨ B)
@@ -55,7 +46,7 @@ data Skel⁻ : Pat → Type ⁻ → Type ⁻ → Set where
    ap : ∀{Δ₁ Δ₂ A B C} 
       (K⁺ : Skel⁺ Δ₁ A)
       (K⁻ : Skel⁻ Δ₂ B C)
-      → Skel⁻ (Δ₁ ⊗ Δ₂) (A ⊃ B) C
+      → Skel⁻ (Δ₁ ++ Δ₂) (A ⊃ B) C
    π₁ : ∀{Δ A B C}
       (K : Skel⁻ Δ A C)
       → Skel⁻ Δ (A ∧ B) C
@@ -64,11 +55,10 @@ data Skel⁻ : Pat → Type ⁻ → Type ⁻ → Set where
       → Skel⁻ Δ (A ∧ B) C
 
 ηPat : Pat → Set
-ηPat (Δ ⊗ Δ') = ηPat Δ × ηPat Δ'
-ηPat ⟨ A ∧ B ⟩ = Void
-ηPat ⟨ (A ∨ B) ⟩ = Void
-ηPat ⟨ ↓ A ⟩ = Unit
-ηPat ⟨⟩ = Unit
+ηPat ((A ∧ B) :: Δ) = Void
+ηPat ((A ∨ B) :: Δ) = Void
+ηPat (↓ A :: Δ) = Unit
+ηPat [] = Unit
 
 {- [] = Unit
 ηPat (con Q :: Δ) = ηPat Δ
@@ -114,15 +104,19 @@ module LAX (sig : String → Maybe (Type ⁻)) where
             → Neutral Γ C
 
       -- N : Term Γ A is the derivation Γ ⊢ N : A true
-      data Term (Γ : Ctx) : Type ⁻ → Set where
+      data Term (Γ : Ctx) : Pat → Type ⁻ → Set where
          ·_ : ∀{Q}
             (R : Neutral Γ (con Q))
-            → Term Γ (con Q)
+            → Term Γ ⟨⟩ (con Q)
+         _∣_ : ∀{A B C}
+            (N₁ : InvTerm Γ ⟨ A , B ⟩ C)
+            (N₂ : InvTerm Γ B C)
+            → InvTerm Γ ⟨ A ∨ B ⟩ C
          ○ : ∀{A}
             (E : Exp Γ A)
             → Term Γ (○ A)
          Λ : ∀{A B}
-            (N : InvTerm Γ A B)
+            (N : InvTerm Γ ⟨ A ⟩ B)
             → Term Γ (A ⊃ B)
          _,_ : ∀{A B}
             (N₁ : Term Γ A)
@@ -130,14 +124,10 @@ module LAX (sig : String → Maybe (Type ⁻)) where
             → Term Γ (A ∧ B) 
             
       -- N : InvTerm Γ A C is the derivation Γ; A ⊢ N : C true
-      data InvTerm (Γ : Ctx) : Type ⁺ → Type ⁻ → Set where
+      data InvTerm (Γ : Ctx) : Pat → Type ⁻ → Set where
          ·_ : ∀{A C}
             (N : Term (A :: Γ) C)
-            → InvTerm Γ (↓ A) C
-         _∣_ : ∀{A B C}
-            (N₁ : InvTerm Γ A C)
-            (N₂ : InvTerm Γ B C)
-            → InvTerm Γ (A ∨ B) C
+            → InvTerm Γ ⟨ ↓ A ⟩ C
 
       -- E : Exp Γ A is the derivation Γ ⊢ E ÷ A lax
       data Exp (Γ : Ctx) : Type ⁺ → Set where
@@ -206,6 +196,12 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    ⟨ ↓ A ⟩ ⟫ Γ ⟫ <> = A :: Γ
    ⟨⟩ ⟫ Γ ⟫ <> = Γ 
 
+   -- All substitutions bind η-long patterns
+   ησ : ∀{Γ Δ} → Subst Γ Δ → ηPat Δ
+   ησ ⟨⟩ = <>
+   ησ ⟨ N ⟩ = <>
+   ησ (σ₁ , σ₂) = ησ σ₁ , ησ σ₂
+
    -- Is a variable pointing to the part of the context being substituted for?
    Γ? : ∀{Γ B} (Γ' : Ctx) (Δ : Pat) (p : ηPat Δ)
       → B ∈ Γ' ++ Δ ⟫ Γ ⟫ p 
@@ -225,6 +221,20 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    ... | Inl y = Inl y
    ... | Inr y = Inr (S y)
 
+   mutual
+      sbN : ∀{Γ Δ C} (Γ' : Ctx) (τ : Subst Γ Δ)
+         → Term (Γ' ++ Δ ⟫ Γ ⟫ ησ τ) C 
+         → Term (Γ' ++ Γ) C
+      sbN Γ' τ (· R) = {!!}
+      sbN Γ' τ (○ E) = {!!}
+      sbN Γ' τ (Λ N) = Λ (sbIN Γ' τ N)
+      sbN Γ' τ (N₁ , N₂) = sbN Γ' τ N₁ , sbN Γ' τ N₂
+
+      sbIN : ∀{Γ Δ B C} (Γ' : Ctx) (τ : Subst Γ Δ) 
+         → InvTerm (Γ' ++ Δ ⟫ Γ ⟫ ησ τ) B C
+         → InvTerm (Γ' ++ Γ) B C
+      sbIN Γ' τ (· N) = · sbN (_ :: Γ') τ N
+      sbIN Γ' τ (N₁ ∣ N₂) = sbIN Γ' τ N₁ ∣ sbIN Γ' τ N₂
 {-
 {-
    [] ⟫ Γ ⟫ p = Γ
@@ -238,33 +248,9 @@ module LAX (sig : String → Maybe (Type ⁻)) where
    Γ? (J :: Γ') Δ p (S x) with Γ? Γ' Δ p x 
    ... | Inl <> = {!!}
    ... | Inr y = Inr (S y)
-{-
-   Γ? [] () x = Inr x
-   Γ? [] p x with Γ? [] ? {!x!}
-   ... | Inl <> = {!!}
-   ... | Inr y = {!!}
-   Γ? [] p x' = {!x'!}
-   Γ? (x :: xs) τ x' = {!!}
--}
-{-
-   Γ? [] τ Z = Inl refl
-   Γ? [] τ (S x) = Inr x
-   Γ? (B :: Γ') Z = Inr Z
-   Γ? (_ :: Γ') (S x) with Γ? Γ' x 
-   ... | Inl Refl = Inl refl
-   ... | Inr y = Inr (S y) 
--}
  
 
-{-
-   wkW : ∀ {Γ A} (Γ' : Ctx) → Value Γ (↓ A) → Term (Γ' ++ Γ) A
-   wkW Γ' (⁻ N) = wkN (sub++ Γ') N
--}
 
-   mutual
-      sbN : ∀{Γ Δ C} (Γ' : Ctx) (τ : Subst Γ Δ)
-         → Term (Γ' ++ Δ ⟫ Γ ⟫ {!!}) C 
-         → Term (Γ' ++ Γ) C
       sbN Γ' τ (· con c · K [ σ ]) = · con c · K [ {!!} ]
       sbN Γ' τ (· var x · K [ σ ]) = {!!} -- red?⁻   
 {-

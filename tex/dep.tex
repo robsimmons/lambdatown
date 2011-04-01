@@ -58,8 +58,6 @@ by induction on the implicit type of the term $M$.
 \end{array}
 \]
 
-Arg: this is wrong: a variable can appear multiple times as long as it appears with a different spine.
-
 \section{Notes from March 15}
 
 We define pattern {\it terms} and pattern {\it substitutions} recursively.
@@ -77,8 +75,8 @@ only define the operation of inverse substitution on pattern substitutions.
 {\Gamma / (\Gamma', x) \vdash N \pat}
 \quad
 \infer
-{(\Gamma_1, \Gamma_2) / \Gamma' \vdash \langle N_1, N_2 \rangle \pat}
-{\Gamma_1 / \Gamma' \vdash N_1 \pat & \Gamma_2 / \Gamma' \vdash N_2 \pat}
+{\Gamma / \Gamma' \vdash \langle N_1, N_2 \rangle \pat}
+{\Gamma / \Gamma' \vdash N_1 \pat & \Gamma / \Gamma' \vdash N_2 \pat}
 \quad
 \infer
 {\Gamma / \Gamma' \vdash x \cdot K [ \sigma ] \pat}
@@ -90,8 +88,8 @@ only define the operation of inverse substitution on pattern substitutions.
 {\Gamma \vdash \cdot \pat}{}
 \quad
 \infer
-{\Gamma_1, \Gamma_2 \vdash (N/x, \sigma) \pat}
-{\Gamma_1/ \cdot \vdash N \pat & \Gamma_2 \vdash \sigma \pat}
+{\Gamma \vdash (N/x, \sigma) \pat}
+{\Gamma / \cdot \vdash N \pat & \Gamma \vdash \sigma \pat}
 \]
 
 Given a pattern substitution $\Gamma \vdash \sigma \pat$ 

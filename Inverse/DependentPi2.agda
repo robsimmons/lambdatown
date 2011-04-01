@@ -238,7 +238,7 @@ module DEPENDENT
       {τ : Subst γ δ}
       {A : Type (δ' ⟩⟩ (γ' ++ δ ⟩⟩ γ)) a}
       {σ : Subst (γ' ++ δ ⟩⟩ γ) δ'}
-      → sbA γ' τ (subA σ A) ≡ subA (sbσ γ' τ σ) {! sbA (δ ⟩⟩ γ') τ A!}
+      → sbA γ' τ (subA σ A) ≡ subA (sbσ γ' τ σ) {! sbA (δ' ⟩⟩ γ') τ A!}
    equiv1 = {!!} 
 
    mutual
@@ -258,8 +258,8 @@ module DEPENDENT
       typedred DM ⟨⟩ ⟨⟩ = {! DM!} -- prove (subA ⟨⟩ A) ≡ A and use
       typedred (Λ DM) (· DK) (DN , Dσ) = {!typedred ? ? Dσ!}
 --         typedred {!!} {! DK!} ?
-      typedred (DM , _) (π₁ y0) Dσ = {!!}
-      typedred (_ , DM) (π₂ y0) Dσ = {!!}
+      typedred (DM , _) (π₁ y0) Dσ = typedred DM y0 Dσ
+      typedred (_ , DM) (π₂ y0) Dσ = {!typedred DM y0 Dσ!}
 
 
       typedsubN : ∀{γ c δ} {γ' : Ctx}
