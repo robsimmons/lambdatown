@@ -14,10 +14,10 @@ module TYPES (sig : String → Maybe Class) where
    open MINIMAL sig
 
    data Type (γ : Ctx) : Class → Set where
-      _·_[_] : ∀{δ} (c : String) {ch : Check (isSome (sig c))}
-         (K : Skel δ (valOf (sig c) {ch}) (con typ))
+      _·_[_] : ∀{δ} (a : String) {ch : Check (isSome (sig a))}
+         (K : Skel δ (valOf (sig a) {ch}) (con typ))
          (σ : Subst γ δ)
-         → Type γ (con (atm c))
+         → Type γ (con (atm a))
       Π : ∀{a b}
          (A : Type γ a)
          (B : Type (a :: γ) b) 
@@ -112,12 +112,13 @@ module DEPENDENT
          → Type γ a → Set where
       var : ∀{a}
          (x : a ∈ γ)
-         → Γ ⊢ var x ∶ Γ→ x Γ ∶head
+         → Γ ⊢ var x ∶ (Γ→ x Γ) ∶head
       con : ∀{c ch}
          {A : Type [] (valOf (sig c) {ch})}
          → con c A ∈ Sig
          → Γ ⊢ con c ∶ wkA (λ ()) A ∶head
 
+   -- Γ / A / Δ ⊩ K : C
    data _/_/_⊩_∶_ {γ : _} (Γ : DCtx γ) : ∀{δ a c}
          → Type γ a
          → PCtx γ δ 
@@ -152,6 +153,7 @@ module DEPENDENT
          → Γ / A ∧ B / Δ ⊩ π₂ K ∶ C
 
    mutual 
+      -- Γ ⊢ σ : Δ
       data _⊢_∶_∶ctx {γ : _} (Γ : DCtx γ) : ∀{δ}
             → Subst γ δ
             → PCtx γ δ → Set where
@@ -259,7 +261,7 @@ module DEPENDENT
       typedred (Λ DM) (· DK) (DN , Dσ) = {!typedred ? ? Dσ!}
 --         typedred {!!} {! DK!} ?
       typedred (DM , _) (π₁ y0) Dσ = typedred DM y0 Dσ
-      typedred (_ , DM) (π₂ y0) Dσ = {!typedred DM y0 Dσ!}
+      typedred (_ , DM) (π₂ y0) Dσ = typedred DM y0 Dσ
 
 
       typedsubN : ∀{γ c δ} {γ' : Ctx}
