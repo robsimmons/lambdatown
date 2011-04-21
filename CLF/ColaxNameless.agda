@@ -224,7 +224,7 @@ module COLAX (sig : String → Maybe Type) where
       subst : ∀{Γ A C n} → Term Γ A → Term' (A :: Γ) n C → Term Γ C
       subst M (Λ N) = Λ (subst (wk sub-wken M) (wk' sub-exch N))
       subst M (N₁ , N₂) = subst M N₁ , subst M N₂
-      subst M (○ E) = ○ {! thunk (substE M (force E)) !}
+      subst M (○ E) = ○ (thunk (substE M (force E)))
       subst M (con c · K [ σ ]) = con c · K [ substσ M σ ]
       subst M (var (S x) · K [ σ ]) = var x · K [ substσ M σ ]
       subst M (var Z · K [ σ ]) = red⁻ M K (substσ M σ)
@@ -268,6 +268,26 @@ module COLAX (sig : String → Maybe Type) where
          leftist (let○ h K σ E) E' = 
             let○ h K σ (thunk (leftist (force E) (wkE sub-wkex E')))
 
+   {- Why this doesn't work -}
+
+   -- term1 : · ⊢ Q ⊃ { Q }
+   term1 : Term [] (con "q" ⊃ ○ (con "q"))
+   term1 = Λ (○ (thunk ⟨ (var Z) · ⟨⟩ [ ⟨⟩ ] ⟩)) 
+
+   -- term2 : Q ⊃ { Q } ⊢ Q ⊃ { P }
+   term2 : Term [ con "q" ⊃ ○ (con "q") ] (con "q" ⊃ ○ (con "p"))
+   term2 = Λ (○ (infexp (S Z) Z))
+    where
+      infexp : ∀{Γ}
+         → (con "q" ⊃ ○ (con "q")) ∈ Γ 
+         → con "q" ∈ Γ 
+         → Lazy (Exp Γ (con "p"))
+      infexp f x = thunk (let○ (var f) (· ⟨⟩) (var x · ⟨⟩ [ ⟨⟩ ] , ⟨⟩) 
+                      (infexp (S f) (S x)))
+
+   -- the trap
+   term3 : Term [] (con "q" ⊃ ○ (con "p"))
+   term3 = {! subst term1 (→m term2) !}
 
    {- PART 5: ETA-EXPANSION -}
 

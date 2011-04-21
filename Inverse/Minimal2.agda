@@ -105,6 +105,7 @@ module MINIMAL (sig : String → Maybe Class) where
    _⟩⟩_ : Ctx → Ctx → Ctx  
    [] ⟩⟩ γ = γ
    (a :: δ) ⟩⟩ γ = δ ⟩⟩ (a :: γ)
+     -- If (Γ), (x : A, Δ) = (Γ, x : A), (Δ)
 
    -- Pull a term out of a substitution
    σ→ : ∀{Γ Δ A} → A ∈ Δ → Subst Γ Δ → Term Γ A

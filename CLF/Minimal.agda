@@ -189,4 +189,3 @@ module MINIMAL (sig : String → Maybe Type) where
 
    η : ∀{Γ A} → Neutral Γ A → Term Γ A
    η (h · K [ σ ]) = eta h K σ
-
