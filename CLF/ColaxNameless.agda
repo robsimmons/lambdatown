@@ -1,3 +1,6 @@
+-- Robert J. Simmons
+-- Note, this doesn't work, see COUNTEREXAMPLE at the bottom
+
 open import Prelude 
 
 module CLF.ColaxNameless where
@@ -268,27 +271,6 @@ module COLAX (sig : String → Maybe Type) where
          leftist (let○ h K σ E) E' = 
             let○ h K σ (thunk (leftist (force E) (wkE sub-wkex E')))
 
-   {- Why this doesn't work -}
-
-   -- term1 : · ⊢ Q ⊃ { Q }
-   term1 : Term [] (con "q" ⊃ ○ (con "q"))
-   term1 = Λ (○ (thunk ⟨ (var Z) · ⟨⟩ [ ⟨⟩ ] ⟩)) 
-
-   -- term2 : Q ⊃ { Q } ⊢ Q ⊃ { P }
-   term2 : Term [ con "q" ⊃ ○ (con "q") ] (con "q" ⊃ ○ (con "p"))
-   term2 = Λ (○ (infexp (S Z) Z))
-    where
-      infexp : ∀{Γ}
-         → (con "q" ⊃ ○ (con "q")) ∈ Γ 
-         → con "q" ∈ Γ 
-         → Lazy (Exp Γ (con "p"))
-      infexp f x = thunk (let○ (var f) (· ⟨⟩) (var x · ⟨⟩ [ ⟨⟩ ] , ⟨⟩) 
-                      (infexp (S f) (S x)))
-
-   -- the trap
-   term3 : Term [] (con "q" ⊃ ○ (con "p"))
-   term3 = {! subst term1 (→m term2) !}
-
    {- PART 5: ETA-EXPANSION -}
 
    -- Mostly amounts to dealing with the fact that we don't have proper zippers
@@ -357,3 +339,42 @@ module COLAX (sig : String → Maybe Type) where
          let○ (con c) K (σ' [ σ ]σ) (thunk (force E [ η , wkσ sub-wken σ ]E))
       let○ (var x) K σ' E [ σ ]E = 
          red⁺ (lookup x σ) K (σ' [ σ ]σ) (force E [ η , wkσ sub-wken σ ]E)
+
+
+{- Why this doesn't work -}
+module COUNTEREXAMPLE where
+
+   open COLAX (λ x → Nothing) public 
+
+   -- term1 : · ⊢ Q ⊃ { Q }
+   term1 : Term [] (con "q" ⊃ ○ (con "q"))
+   term1 = Λ (○ (thunk ⟨ (var Z) · ⟨⟩ [ ⟨⟩ ] ⟩)) 
+
+   -- term2 : Q ⊃ { Q } ⊢ Q ⊃ { P }
+   term2 : Term [ con "q" ⊃ ○ (con "q") ] (con "q" ⊃ ○ (con "p"))
+   term2 = Λ (○ (infexp (S Z) Z))
+    where
+      infexp : ∀{Γ}
+         → (con "q" ⊃ ○ (con "q")) ∈ Γ 
+         → con "q" ∈ Γ 
+         → Lazy (Exp Γ (con "p"))
+      infexp f x = thunk (let○ (var f) (· ⟨⟩) (var x · ⟨⟩ [ ⟨⟩ ] , ⟨⟩) 
+                      (infexp (S f) (S x)))
+
+   -- the trap: use cut elimination to produce non-productive term
+   oh_crap : Void
+   oh_crap = notterm3 term3
+    where
+      term3 : Term [] (con "q" ⊃ ○ (con "p"))
+      term3 = subst term1 (→m term2)
+
+      lem1 : Exp [ con "q" ] (con "p") → Void
+      lem1 ⟨ con c {()} · K [ σ ] ⟩ 
+      lem1 ⟨ var Z · () [ σ ] ⟩
+      lem1 ⟨ var (S ()) · K [ σ ] ⟩
+      lem1 (let○ (con c {()}) K σ E')
+      lem1 (let○ (var Z) () σ E') 
+      lem1 (let○ (var (S ())) K σ E')
+
+      notterm3 : Term [] (con "q" ⊃ ○ (con "p")) → Void
+      notterm3 (Λ (○ E)) = lem1 (force E) 
